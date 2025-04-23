@@ -1,0 +1,55 @@
+---
+linters:
+  disable-all: true
+  enable:
+    # - lll
+    # - gocritic
+    # - gocognit
+    # - gci         (deprecated since v1.30.0)
+    # - interfacer  (deprecated since v1.38.0)
+    # - scopelint   (deprecated since v1.39.0)
+    # - golint      (deprecated since v1.41.0)
+    # - structcheck (deprecated since v1.49.0)
+    # - varcheck    (deprecated since v1.49.0)
+    # - deadcode    (deprecated since v1.49.0)
+    - bodyclose
+    - depguard
+    - dogsled
+    - errcheck
+    - exportloopref
+    - forbidigo
+    - funlen
+    - goconst
+    - gocyclo
+    - gofmt
+    - gofumpt
+    - goimports
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - nakedret
+    - staticcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+
+linters-settings:
+  funlen:
+    lines: 120
+    statements: 80
+  nestif:
+    min-complexity: 6
+  govet:
+    check-shadowing: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+output:
+  format: github-actions

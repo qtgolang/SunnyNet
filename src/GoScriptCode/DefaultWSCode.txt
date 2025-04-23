@@ -1,0 +1,115 @@
+package main
+
+//仅允许使用官方包
+import (
+	"bytes"
+	"strings"
+)
+
+/*
+   你可以右键，命令面板（或F1快捷键）,查看模板文件,或恢复到默认代码
+   当您修改完成后,右键测试保存即可
+*/
+
+// 脚本回调事件 -> HTTP 发起请求、HTTP 响应请求、HTTP 请求错误
+func Event_HTTP(Conn HTTPEvent) {
+	if Conn.Type() == 1 {
+		//发送请求
+		return
+	}
+	if Conn.Type() == 2 {
+		//接收到响应
+		return
+	}
+	if Conn.Type() == 3 {
+		//请求失败
+		return
+	}
+}
+
+// WebSocket回调事件 -> 发送消息、收到消息、连接成功、连接断开
+func Event_WebSocket(Conn WebSocketEvent) {
+	//不执行代码,仅查看模板代码
+	execCode := false
+	if !execCode {
+		return
+	}
+
+	//收到客户端发送数据到服务器
+	if Conn.Type() == 2 {
+		{
+			//取消客户端发送到服务器的数据
+			Conn.SetBody([]byte{})
+		}
+		{
+			//修改部分提交数据
+			if BytesIndex(Conn.Body(), []byte("123456")) != -1 {
+				Conn.SetBody(BytesReplace(Conn.Body(), []byte("123456"), []byte("Conn")))
+			}
+		}
+		{
+			//查看这个请求对应的URL
+			if StringIndex(Conn.URL(), "baidu") != -1 {
+				//关闭这个会话
+				Conn.Close()
+			}
+		}
+	}
+	//收到服务器响应数据
+	if Conn.Type() == 3 {
+		{
+			//取消服务器发送数据到客户端
+			Conn.SetBody([]byte{})
+		}
+		{
+			//修改部分响应数据
+			if BytesIndex(Conn.Body(), []byte("123456")) != -1 {
+				Conn.SetBody(BytesReplace(Conn.Body(), []byte("123456"), []byte("Conn")))
+			}
+		}
+	}
+	//连接断开
+	if Conn.Type() == 4 {
+		Log("这个ws请求(已经断开):", Conn.URL())
+	}
+}
+
+// tcp回调事件 -> 即将连接、发送消息、收到消息、连接成功、连接断开
+func Event_TCP(Conn TCPEvent) {
+	if Conn.Type() == 4 {
+		//即将开始连接
+		return
+	}
+	if Conn.Type() == 0 {
+		//连接成功
+		return
+	}
+	if Conn.Type() == 1 {
+		//客户端发送数据
+		return
+	}
+	if Conn.Type() == 2 {
+		//客户端收到数据
+		return
+	}
+	if Conn.Type() == 3 {
+		//连接关闭或连接失败
+		return
+	}
+}
+
+// udp回调事件 -> 发送消息、收到消息、连接断开
+func Event_UDP(Conn UDPEvent) {
+	if Conn.Type() == 1 {
+		//连接关闭
+		return
+	}
+	if Conn.Type() == 2 {
+		//客户端收到数据
+		return
+	}
+	if Conn.Type() == 3 {
+		//收到数据
+		return
+	}
+}

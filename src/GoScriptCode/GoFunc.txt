@@ -1,0 +1,98 @@
+
+
+
+func NewHttpSunny(conn Call.ConnHTTP) {
+    if conn != nil {
+        Event_HTTP(HTTPEvent{ConnHTTP:conn})
+    }
+}
+
+func NewWebsocketSunny(conn Call.ConnWebSocket) {
+     if conn != nil {
+        Event_WebSocket(WebSocketEvent{ConnWebSocket:conn})
+     }
+
+}
+
+func NewTCPSunny(conn Call.ConnTCP) {
+   if conn != nil {
+        Event_TCP(TCPEvent{ConnTCP:conn})
+   }
+}
+
+func NewUDPSunny(conn Call.ConnUDP) {
+   if conn != nil {
+        Event_UDP(UDPEvent{ConnUDP:conn})
+   }
+}
+//------------------- 覆盖重新方法 SetAgent StopRequest  因为参数类型问题,不重写一次,会报错 ----------------------------------
+type HTTPEvent struct {
+    Call.ConnHTTP
+}
+
+func (conn *HTTPEvent) SetAgent(ProxyUrl string, timeout ...int) bool {
+    return conn.ConnHTTP.SetAgent(ProxyUrl, timeout...)
+}
+func (conn *HTTPEvent) StopRequest(StatusCode int, Data any, header ...any) {
+	if len(header) > 0 {
+		h1, ok := header[0].(Header)
+		if ok {
+			conn.ConnHTTP.StopRequest(StatusCode, Data, http.Header(h1))
+			return
+		}
+		h2, ok := header[0].(http.Header)
+		if ok {
+			conn.ConnHTTP.StopRequest(StatusCode, Data, h2)
+			return
+		}
+	}
+	conn.ConnHTTP.StopRequest(StatusCode, Data)
+}
+
+//------------------------------- 覆盖重新方法 SetAgent  因为参数类型问题,不重写一次,会报错 ----------------------------------
+type TCPEvent struct {
+    Call.ConnTCP
+}
+func (conn *TCPEvent) SetAgent(ProxyUrl string, timeout ...int) bool {
+    return conn.ConnTCP.SetAgent(ProxyUrl, timeout...)
+}
+
+//--------------------------------------------------------------------------------------------------------------------
+type UDPEvent struct {
+     Call.ConnUDP
+}
+//--------------------------------------------------------------------------------------------------------------------
+type WebSocketEvent struct {
+     Call.ConnWebSocket
+}
+func (conn *WebSocketEvent) SendToClient(MessageType int, data []byte) bool {
+    return conn.ConnWebSocket.SendToClient(MessageType, data)
+}
+func (conn *WebSocketEvent) SendToServer(MessageType int, data []byte) bool {
+    return conn.ConnWebSocket.SendToServer(MessageType, data)
+}
+//--------------------------------------------------------------------------------------------------------------------
+
+var __lock sync.Mutex
+var _____log___call___address func(info ...any)
+
+func log(msg ...interface{}) {
+	if _____log___call___address == nil {
+		return
+	}
+	__lock.Lock()
+	_____log___call___address(msg)
+	__lock.Unlock()
+}
+func SetLogFunc(call func(info ...any)) {
+	_____log___call___address = call
+}
+
+var Log =log
+var println =log
+var Println =log
+var Print =log
+var print =log
+var Sprintf=fmt.Sprintf
+var sprintf=fmt.Sprint
+type Header http.Header

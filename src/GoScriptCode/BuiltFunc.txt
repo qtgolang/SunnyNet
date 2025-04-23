@@ -1,0 +1,1341 @@
+package main
+
+import (
+	"io"
+	"os"
+	"fmt"
+	"sync"
+	"net/http"
+	"net/url"
+	"bytes"
+	"strconv"
+	"time"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/des"
+	"crypto/hmac"
+	"crypto/md5"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
+	mathrand "math/rand"
+	"strings"
+	"reflect"
+	"SunnyNet/src/Call"
+	"SunnyNet/src/mmCompress"
+	"SunnyNet/src/SunnyProtobuf"
+)
+
+import (
+	"encoding/hex"
+)
+
+import (
+	"errors"
+)
+
+ 
+var PbToJson = SunnyProtobuf.PbToJson
+var JsonToPB = SunnyProtobuf.JsonToPB
+var JsonParse = SunnyProtobuf.JsonParse
+
+func GoMD5(a any, key ...any) []byte {
+	_key := make([]byte, 0)
+	if len(key) > 0 {
+		switch v := key[0].(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+	}
+	switch v := a.(type) {
+	case string:
+		if len(_key) > 0 {
+			m := hmac.New(md5.New, _key)
+			m.Write([]byte(v))
+			return m.Sum(nil)
+		}
+		m := md5.New()
+		m.Write([]byte(v))
+		return m.Sum(nil)
+	case []byte:
+		if len(_key) > 0 {
+			m := hmac.New(md5.New, _key)
+			m.Write(v)
+			return m.Sum(nil)
+		}
+		m := md5.New()
+		m.Write(v)
+		return m.Sum(nil)
+	}
+	return make([]byte, 0)
+}
+func GoSHA1(a any, key ...any) []byte {
+	_key := make([]byte, 0)
+	if len(key) > 0 {
+		switch v := key[0].(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+	}
+	switch v := a.(type) {
+	case string:
+		if len(_key) > 0 {
+			m := hmac.New(sha1.New, _key)
+			m.Write([]byte(v))
+			return m.Sum(nil)
+		}
+		m := sha1.New()
+		m.Write([]byte(v))
+		return m.Sum(nil)
+	case []byte:
+		if len(_key) > 0 {
+			m := hmac.New(sha1.New, _key)
+			m.Write(v)
+			return m.Sum(nil)
+		}
+		m := sha1.New()
+		m.Write(v)
+		return m.Sum(nil)
+	}
+	return make([]byte, 0)
+}
+func GoSHA256(a any, key ...any) []byte {
+	_key := make([]byte, 0)
+	if len(key) > 0 {
+		switch v := key[0].(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+	}
+	switch v := a.(type) {
+	case string:
+		if len(_key) > 0 {
+			m := hmac.New(sha256.New, _key)
+			m.Write([]byte(v))
+			return m.Sum(nil)
+		}
+		m := sha256.New()
+		m.Write([]byte(v))
+		return m.Sum(nil)
+	case []byte:
+		if len(_key) > 0 {
+			m := hmac.New(sha256.New, _key)
+			m.Write(v)
+			return m.Sum(nil)
+		}
+		m := sha256.New()
+		m.Write(v)
+		return m.Sum(nil)
+	}
+	return make([]byte, 0)
+}
+func GoSHA512(a any, key ...any) []byte {
+	_key := make([]byte, 0)
+	if len(key) > 0 {
+		switch v := key[0].(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+	}
+	switch v := a.(type) {
+	case string:
+		if len(_key) > 0 {
+			m := hmac.New(sha512.New, _key)
+			m.Write([]byte(v))
+			return m.Sum(nil)
+		}
+		m := sha512.New()
+		m.Write([]byte(v))
+		return m.Sum(nil)
+	case []byte:
+		if len(_key) > 0 {
+			m := hmac.New(sha512.New, _key)
+			m.Write(v)
+			return m.Sum(nil)
+		}
+		m := sha512.New()
+		m.Write(v)
+		return m.Sum(nil)
+	}
+	return make([]byte, 0)
+}
+func GoHexEncode(a any) string {
+	switch v := a.(type) {
+	case string:
+		return hex.EncodeToString([]byte(v))
+	case []byte:
+		return hex.EncodeToString(v)
+	}
+	return ""
+}
+func GoHexDecode(a string) []byte {
+	_b, _ := hex.DecodeString(a)
+	return _b
+}
+func GoBase64Encode(a any) string {
+	switch v := a.(type) {
+	case string:
+		return base64.StdEncoding.EncodeToString([]byte(v))
+	case []byte:
+		return base64.StdEncoding.EncodeToString(v)
+	}
+	return ""
+}
+func GoBase64Decode(a string) []byte {
+	b, _ := base64.StdEncoding.DecodeString(a)
+	return b
+}
+
+func GoHTTPRequest(method, url string, data any, header ...any) ([]byte, http.Header, error) {
+ 	client := &http.Client{}
+ 	rBody := make([]byte, 0)
+ 	switch v := data.(type) {
+ 	case string:
+ 		rBody = []byte(v)
+ 		break
+ 	case []byte:
+ 		rBody = v
+ 		break
+
+ 	}
+ 	rData := io.NopCloser(bytes.NewBuffer(rBody))
+ 	defer func() {
+ 		_ = rData.Close()
+ 	}()
+ 	request, err := http.NewRequest(strings.ToUpper(method), url, rData)
+ 	if len(header) > 0 {
+ 		h, ok := header[0].(Header)
+ 		if ok {
+ 			request.Header = h
+ 		} else {
+ 			h1, ok1 := header[0].(http.Header)
+ 			if ok1 {
+ 				request.Header = h1
+ 			}
+ 		}
+ 	}
+ 	if err != nil {
+ 		return nil, nil, err
+ 	}
+ 	if len(header) > 1 {
+ 		h := header[1].(http.Header)
+ 		if h != nil {
+ 			request.Header = h
+ 		}
+ 	}
+ 	response, err := client.Do(request)
+ 	if err != nil {
+ 		return nil, nil, err
+ 	}
+ 	body := make([]byte, 0)
+ 	var _header http.Header
+ 	if response != nil {
+ 		_header = response.Header
+ 		if response.Body != nil {
+ 			defer func() { _ = response.Body.Close() }()
+ 			body, err = io.ReadAll(response.Body)
+ 		}
+ 	}
+ 	if err != nil {
+ 		return nil, nil, err
+ 	}
+ 	return body, _header, nil
+ }
+
+func GoRsaPrivateDecrypt(key string, cipher []byte) ([]byte, error) {
+	privateKey, _ := pem.Decode([]byte(key))
+	if privateKey == nil {
+		return nil, errors.New("private key error")
+	}
+	prov, err := x509.ParsePKCS1PrivateKey(privateKey.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return rsa.DecryptPKCS1v15(rand.Reader, prov, cipher)
+}
+func GoRsaPublicEncrypt(Key string, cipher []byte) ([]byte, error) {
+	publicKey, _ := pem.Decode([]byte(Key))
+	if publicKey == nil {
+		return nil, errors.New("public key error")
+	}
+	pubInterface, err := x509.ParsePKIXPublicKey(publicKey.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	if pubInterface == nil {
+		return nil, errors.New("public ParsePKIXPublicKey error")
+	}
+	pub := pubInterface.(*rsa.PublicKey)
+	if pub == nil {
+		return nil, errors.New("public ParsePKIXPublicKey error")
+	}
+	return rsa.EncryptPKCS1v15(rand.Reader, pub, cipher)
+}
+func GoAESCBCEncode(key, iv any, Padding string, data any) (_b []byte, _e error) {
+	defer func() {
+		e := recover()
+		if e != nil {
+			_e = errors.New("发生了异常,请检查Padding及其他参数是否正确")
+		}
+	}()
+	_key := make([]byte, 0)
+	_iv := make([]byte, 0)
+	_data := make([]byte, 0)
+	in := make([]byte, 0)
+	{
+		switch v := key.(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+		switch v := iv.(type) {
+		case string:
+			_iv = []byte(v)
+			break
+		case []byte:
+			_iv = v
+			break
+		}
+		switch v := data.(type) {
+		case string:
+			_data = []byte(v)
+			break
+		case []byte:
+			_data = v
+			break
+		}
+	}
+	_key = _AES_keyFactory(_key)
+	block, err := aes.NewCipher(_key)
+	if err != nil {
+		return nil, err
+	}
+	_Padding := strings.ToUpper(Padding)
+	if strings.Contains(_Padding, "PKCS5") || strings.Contains(_Padding, "PKCS7") {
+		in = _AES_Pkcs5padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ISO97971") {
+		in = _AES_zeroPadding(append(_data, bytes.Repeat([]byte{byte(128)}, 1)...), block.BlockSize())
+	} else if strings.Contains(_Padding, "ANSIX923") {
+		in = _AES_ansiX923padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ISO10126") {
+		in = _AES_iso10126padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ZERO") {
+		in = _AES_zeroPadding(_data, block.BlockSize())
+	} else {
+		in = _data
+	}
+	blockMode := cipher.NewCBCEncrypter(block, _AES_ivFactory(_iv))
+	crypto := make([]byte, len(in))
+	blockMode.CryptBlocks(crypto, in)
+	return crypto, nil
+}
+func GoAESCBCDecrypt(key, iv any, Padding string, data []byte) (_b []byte, _e error) {
+	defer func() {
+		e := recover()
+		if e != nil {
+			_e = errors.New("发生了异常,请检查Padding及其他参数是否正确")
+		}
+	}()
+	_key := make([]byte, 0)
+	_iv := make([]byte, 0)
+	{
+		switch v := key.(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+		switch v := iv.(type) {
+		case string:
+			_iv = []byte(v)
+			break
+		case []byte:
+			_iv = v
+			break
+		}
+	}
+	_key = _AES_keyFactory(_key)
+	block, err := aes.NewCipher(_key)
+	if err != nil {
+		return nil, err
+	}
+	blockMode := cipher.NewCBCDecrypter(block, _AES_ivFactory(_iv))
+	origData := make([]byte, len(data))
+	blockMode.CryptBlocks(origData, data)
+	_Padding := strings.ToUpper(Padding)
+	if strings.Contains(_Padding, "NOPAD") {
+		return origData, nil
+	}
+	if !strings.Contains(_Padding, "ZERO") && !strings.Contains(_Padding, "ISO10126") && !strings.Contains(_Padding, "ANSIX923") && !strings.Contains(_Padding, "ISO97971") && !strings.Contains(_Padding, "PKCS7") && !strings.Contains(_Padding, "PKCS5") {
+		return origData, nil
+	}
+	if strings.Contains(_Padding, "ISO97971") {
+		length := len(origData)
+		padding := int(origData[length-1])
+		return origData[:(length-padding)-1], nil
+	}
+	length := len(origData)
+	padding := int(origData[length-1])
+	return origData[:(length - padding)], nil
+}
+func GoAESECBEncode(key any, Padding string, data any) (_ []byte, _e error) {
+	defer func() {
+		e := recover()
+		if e != nil {
+			_e = errors.New("发生了异常,请检查Padding及其他参数是否正确")
+		}
+	}()
+	_key := make([]byte, 0)
+	_data := make([]byte, 0)
+	in := make([]byte, 0)
+	{
+		switch v := key.(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+		switch v := data.(type) {
+		case string:
+			_data = []byte(v)
+			break
+		case []byte:
+			_data = v
+			break
+		}
+	}
+	_key = _AES_keyFactory(_key)
+	block, err := aes.NewCipher(_key)
+	if err != nil {
+		return nil, err
+	}
+	_Padding := strings.ToUpper(Padding)
+	if strings.Contains(_Padding, "PKCS5") || strings.Contains(_Padding, "PKCS7") {
+		in = _AES_Pkcs5padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ISO97971") {
+		in = _AES_zeroPadding(append(_data, bytes.Repeat([]byte{byte(128)}, 1)...), block.BlockSize())
+	} else if strings.Contains(_Padding, "ANSIX923") {
+		in = _AES_ansiX923padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ISO10126") {
+		in = _AES_iso10126padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ZERO") {
+		in = _AES_zeroPadding(_data, block.BlockSize())
+	} else {
+		in = _data
+	}
+	n := 0
+	encryptData := make([]byte, len(in))
+	blockSize := block.BlockSize()
+	tmpData := make([]byte, blockSize)
+	for index := 0; index < len(in); index += blockSize {
+		if len(in) < index {
+			n++
+			continue
+		}
+		if len(in) < index+blockSize {
+			return nil, errors.New("data len error")
+		} else {
+			block.Encrypt(tmpData, in[index:index+blockSize])
+		}
+		for i := 0; i < blockSize; i++ {
+			encryptData[blockSize*n+i] = tmpData[i]
+		}
+		n++
+	}
+	return encryptData, nil
+}
+func GoAESECBDecrypt(key any, Padding string, data []byte) (_b []byte, _e error) {
+	defer func() {
+		e := recover()
+		if e != nil {
+			_e = errors.New("发生了异常,请检查Padding及其他参数是否正确")
+		}
+	}()
+	_key := make([]byte, 0)
+	{
+		switch v := key.(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+	}
+	_key = _AES_keyFactory(_key)
+	block, err := aes.NewCipher(_key)
+	if err != nil {
+		return nil, err
+	}
+	blockSize := block.BlockSize()
+	n := 0
+	decryptData := make([]byte, len(data))
+	tmpData := make([]byte, blockSize)
+	for index := 0; index < len(data); index += blockSize {
+		block.Decrypt(tmpData, data[index:index+blockSize])
+		for i := 0; i < blockSize; i++ {
+			decryptData[blockSize*n+i] = tmpData[i]
+		}
+		n++
+	}
+	_Padding := strings.ToUpper(Padding)
+	if strings.Contains(_Padding, "NOPAD") {
+		return decryptData, nil
+	}
+	if !strings.Contains(_Padding, "ZERO") && !strings.Contains(_Padding, "ISO10126") && !strings.Contains(_Padding, "ANSIX923") && !strings.Contains(_Padding, "ISO97971") && !strings.Contains(_Padding, "PKCS7") && !strings.Contains(_Padding, "PKCS5") {
+		return decryptData, nil
+	}
+	length := len(decryptData)
+	if length < 1 {
+		return nil, errors.New("data nil")
+	}
+	if strings.Contains(_Padding, "ISO97971") {
+		padding := int(decryptData[length-1])
+		return decryptData[:(length-padding)-1], nil
+	}
+
+	padding := int(decryptData[length-1])
+	return decryptData[:(length - padding)], nil
+}
+func GoDESCBCEncode(key, iv any, Padding string, data any) (_b []byte, _e error) {
+	defer func() {
+		e := recover()
+		if e != nil {
+			_e = errors.New("发生了异常,请检查Padding及其他参数是否正确")
+		}
+	}()
+	_key := make([]byte, 0)
+	_iv := make([]byte, 0)
+	_data := make([]byte, 0)
+	in := make([]byte, 0)
+	{
+		switch v := key.(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+		switch v := iv.(type) {
+		case string:
+			_iv = []byte(v)
+			break
+		case []byte:
+			_iv = v
+			break
+		}
+		switch v := data.(type) {
+		case string:
+			_data = []byte(v)
+			break
+		case []byte:
+			_data = v
+			break
+		}
+	}
+	_key = _DES_keyFactory(_key)
+	block, err := des.NewCipher(_key)
+	if err != nil {
+		return nil, err
+	}
+	_Padding := strings.ToUpper(Padding)
+	if strings.Contains(_Padding, "PKCS5") || strings.Contains(_Padding, "PKCS7") {
+		in = _AES_Pkcs5padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ISO97971") {
+		in = _AES_zeroPadding(append(_data, bytes.Repeat([]byte{byte(128)}, 1)...), block.BlockSize())
+	} else if strings.Contains(_Padding, "ANSIX923") {
+		in = _AES_ansiX923padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ISO10126") {
+		in = _AES_iso10126padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ZERO") {
+		in = _AES_zeroPadding(_data, block.BlockSize())
+	} else {
+		in = _data
+	}
+	blockMode := cipher.NewCBCEncrypter(block, _DES_ivFactory(_iv))
+	crypto := make([]byte, len(in))
+	blockMode.CryptBlocks(crypto, in)
+	return crypto, nil
+}
+func GoDESCBCDecrypt(key, iv any, Padding string, data []byte) (_b []byte, _e error) {
+	defer func() {
+		e := recover()
+		if e != nil {
+			_e = errors.New("发生了异常,请检查Padding及其他参数是否正确")
+		}
+	}()
+	_key := make([]byte, 0)
+	_iv := make([]byte, 0)
+	{
+		switch v := key.(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+		switch v := iv.(type) {
+		case string:
+			_iv = []byte(v)
+			break
+		case []byte:
+			_iv = v
+			break
+		}
+	}
+	_key = _DES_keyFactory(_key)
+	block, err := des.NewCipher(_key)
+	if err != nil {
+		return nil, err
+	}
+	blockMode := cipher.NewCBCDecrypter(block, _DES_ivFactory(_iv))
+	origData := make([]byte, len(data))
+	blockMode.CryptBlocks(origData, data)
+	_Padding := strings.ToUpper(Padding)
+	if strings.Contains(_Padding, "NOPAD") {
+		return origData, nil
+	}
+	if !strings.Contains(_Padding, "ZERO") && !strings.Contains(_Padding, "ISO10126") && !strings.Contains(_Padding, "ANSIX923") && !strings.Contains(_Padding, "ISO97971") && !strings.Contains(_Padding, "PKCS7") && !strings.Contains(_Padding, "PKCS5") {
+		return origData, nil
+	}
+	if strings.Contains(_Padding, "ISO97971") {
+		length := len(origData)
+		padding := int(origData[length-1])
+		return origData[:(length-padding)-1], nil
+	}
+	length := len(origData)
+	padding := int(origData[length-1])
+	return origData[:(length - padding)], nil
+}
+func GoDESECBEncode(key any, Padding string, data any) (_ []byte, _e error) {
+	defer func() {
+		e := recover()
+		if e != nil {
+			_e = errors.New("发生了异常,请检查Padding及其他参数是否正确")
+		}
+	}()
+	_key := make([]byte, 0)
+	_data := make([]byte, 0)
+	in := make([]byte, 0)
+	{
+		switch v := key.(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+		switch v := data.(type) {
+		case string:
+			_data = []byte(v)
+			break
+		case []byte:
+			_data = v
+			break
+		}
+	}
+	_key = _DES_keyFactory(_key)
+	block, err := des.NewCipher(_key)
+	if err != nil {
+		return nil, err
+	}
+	_Padding := strings.ToUpper(Padding)
+	if strings.Contains(_Padding, "PKCS5") || strings.Contains(_Padding, "PKCS7") {
+		in = _AES_Pkcs5padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ISO97971") {
+		in = _AES_zeroPadding(append(_data, bytes.Repeat([]byte{byte(128)}, 1)...), block.BlockSize())
+	} else if strings.Contains(_Padding, "ANSIX923") {
+		in = _AES_ansiX923padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ISO10126") {
+		in = _AES_iso10126padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ZERO") {
+		in = _AES_zeroPadding(_data, block.BlockSize())
+	} else {
+		in = _data
+	}
+	n := 0
+	encryptData := make([]byte, len(in))
+	blockSize := block.BlockSize()
+	tmpData := make([]byte, blockSize)
+	for index := 0; index < len(in); index += blockSize {
+		block.Encrypt(tmpData, in[index:index+blockSize])
+		for i := 0; i < blockSize; i++ {
+			encryptData[blockSize*n+i] = tmpData[i]
+		}
+		n++
+	}
+	return encryptData, nil
+}
+func GoDESECBDecrypt(key any, Padding string, data []byte) (_b []byte, _e error) {
+	defer func() {
+		e := recover()
+		if e != nil {
+			_e = errors.New("发生了异常,请检查Padding及其他参数是否正确")
+		}
+	}()
+	_key := make([]byte, 0)
+	{
+		switch v := key.(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+	}
+	_key = _DES_keyFactory(_key)
+	block, err := des.NewCipher(_key)
+	if err != nil {
+		return nil, err
+	}
+	blockSize := block.BlockSize()
+	n := 0
+	decryptData := make([]byte, len(data))
+	tmpData := make([]byte, blockSize)
+	for index := 0; index < len(data); index += blockSize {
+		block.Decrypt(tmpData, data[index:index+blockSize])
+		for i := 0; i < blockSize; i++ {
+			decryptData[blockSize*n+i] = tmpData[i]
+		}
+		n++
+	}
+	_Padding := strings.ToUpper(Padding)
+	if strings.Contains(_Padding, "NOPAD") {
+		return decryptData, nil
+	}
+	if !strings.Contains(_Padding, "ZERO") && !strings.Contains(_Padding, "ISO10126") && !strings.Contains(_Padding, "ANSIX923") && !strings.Contains(_Padding, "ISO97971") && !strings.Contains(_Padding, "PKCS7") && !strings.Contains(_Padding, "PKCS5") {
+		return decryptData, nil
+	}
+	length := len(decryptData)
+	if length < 1 {
+		return nil, errors.New("data nil")
+	}
+	if strings.Contains(_Padding, "ISO97971") {
+		padding := int(decryptData[length-1])
+		return decryptData[:(length-padding)-1], nil
+	}
+
+	padding := int(decryptData[length-1])
+	return decryptData[:(length - padding)], nil
+}
+func Go3DESCBCEncode(key, iv any, Padding string, data any) (_b []byte, _e error) {
+	defer func() {
+		e := recover()
+		if e != nil {
+			_e = errors.New("发生了异常,请检查Padding及其他参数是否正确")
+		}
+	}()
+	_key := make([]byte, 0)
+	_iv := make([]byte, 0)
+	_data := make([]byte, 0)
+	in := make([]byte, 0)
+	{
+		switch v := key.(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+		switch v := iv.(type) {
+		case string:
+			_iv = []byte(v)
+			break
+		case []byte:
+			_iv = v
+			break
+		}
+		switch v := data.(type) {
+		case string:
+			_data = []byte(v)
+			break
+		case []byte:
+			_data = v
+			break
+		}
+	}
+	_key = _DES_keyFactory(_key)
+	block, err := des.NewTripleDESCipher(_key)
+	if err != nil {
+		return nil, err
+	}
+	_Padding := strings.ToUpper(Padding)
+	if strings.Contains(_Padding, "PKCS5") || strings.Contains(_Padding, "PKCS7") {
+		in = _AES_Pkcs5padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ISO97971") {
+		in = _AES_zeroPadding(append(_data, bytes.Repeat([]byte{byte(128)}, 1)...), block.BlockSize())
+	} else if strings.Contains(_Padding, "ANSIX923") {
+		in = _AES_ansiX923padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ISO10126") {
+		in = _AES_iso10126padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ZERO") {
+		in = _AES_zeroPadding(_data, block.BlockSize())
+	} else {
+		in = _data
+	}
+	blockMode := cipher.NewCBCEncrypter(block, _DES_ivFactory(_iv))
+	crypto := make([]byte, len(in))
+	blockMode.CryptBlocks(crypto, in)
+	return crypto, nil
+}
+func Go3DESCBCDecrypt(key, iv any, Padding string, data []byte) (_b []byte, _e error) {
+	defer func() {
+		e := recover()
+		if e != nil {
+			_e = errors.New("发生了异常,请检查Padding及其他参数是否正确")
+		}
+	}()
+	_key := make([]byte, 0)
+	_iv := make([]byte, 0)
+	{
+		switch v := key.(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+		switch v := iv.(type) {
+		case string:
+			_iv = []byte(v)
+			break
+		case []byte:
+			_iv = v
+			break
+		}
+	}
+	_key = _DES_keyFactory(_key)
+	block, err := des.NewTripleDESCipher(_key)
+	if err != nil {
+		return nil, err
+	}
+	blockMode := cipher.NewCBCDecrypter(block, _DES_ivFactory(_iv))
+	origData := make([]byte, len(data))
+	blockMode.CryptBlocks(origData, data)
+	_Padding := strings.ToUpper(Padding)
+	if strings.Contains(_Padding, "NOPAD") {
+		return origData, nil
+	}
+	if !strings.Contains(_Padding, "ZERO") && !strings.Contains(_Padding, "ISO10126") && !strings.Contains(_Padding, "ANSIX923") && !strings.Contains(_Padding, "ISO97971") && !strings.Contains(_Padding, "PKCS7") && !strings.Contains(_Padding, "PKCS5") {
+		return origData, nil
+	}
+	if strings.Contains(_Padding, "ISO97971") {
+		length := len(origData)
+		padding := int(origData[length-1])
+		return origData[:(length-padding)-1], nil
+	}
+	length := len(origData)
+	padding := int(origData[length-1])
+	return origData[:(length - padding)], nil
+}
+func Go3DESECBEncode(key any, Padding string, data any) (_ []byte, _e error) {
+	defer func() {
+		e := recover()
+		if e != nil {
+			_e = errors.New("发生了异常,请检查Padding及其他参数是否正确")
+		}
+	}()
+	_key := make([]byte, 0)
+	_data := make([]byte, 0)
+	in := make([]byte, 0)
+	{
+		switch v := key.(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+		switch v := data.(type) {
+		case string:
+			_data = []byte(v)
+			break
+		case []byte:
+			_data = v
+			break
+		}
+	}
+	_key = _DES_keyFactory(_key)
+	block, err := des.NewTripleDESCipher(_key)
+	if err != nil {
+		return nil, err
+	}
+	_Padding := strings.ToUpper(Padding)
+	if strings.Contains(_Padding, "PKCS5") || strings.Contains(_Padding, "PKCS7") {
+		in = _AES_Pkcs5padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ISO97971") {
+		in = _AES_zeroPadding(append(_data, bytes.Repeat([]byte{byte(128)}, 1)...), block.BlockSize())
+	} else if strings.Contains(_Padding, "ANSIX923") {
+		in = _AES_ansiX923padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ISO10126") {
+		in = _AES_iso10126padding(_data, block.BlockSize())
+	} else if strings.Contains(_Padding, "ZERO") {
+		in = _AES_zeroPadding(_data, block.BlockSize())
+	} else {
+		in = _data
+	}
+	n := 0
+	encryptData := make([]byte, len(in))
+	blockSize := block.BlockSize()
+	tmpData := make([]byte, blockSize)
+	for index := 0; index < len(in); index += blockSize {
+		block.Encrypt(tmpData, in[index:index+blockSize])
+		for i := 0; i < blockSize; i++ {
+			encryptData[blockSize*n+i] = tmpData[i]
+		}
+		n++
+	}
+	return encryptData, nil
+}
+func Go3DESECBDecrypt(key any, Padding string, data []byte) (_b []byte, _e error) {
+	defer func() {
+		e := recover()
+		if e != nil {
+			_e = errors.New("发生了异常,请检查Padding及其他参数是否正确")
+		}
+	}()
+	_key := make([]byte, 0)
+	{
+		switch v := key.(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+	}
+	_key = _DES_keyFactory(_key)
+	block, err := des.NewTripleDESCipher(_key)
+	if err != nil {
+		return nil, err
+	}
+	blockSize := block.BlockSize()
+	n := 0
+	decryptData := make([]byte, len(data))
+	tmpData := make([]byte, blockSize)
+	for index := 0; index < len(data); index += blockSize {
+		block.Decrypt(tmpData, data[index:index+blockSize])
+		for i := 0; i < blockSize; i++ {
+			decryptData[blockSize*n+i] = tmpData[i]
+		}
+		n++
+	}
+	_Padding := strings.ToUpper(Padding)
+	if strings.Contains(_Padding, "NOPAD") {
+		return decryptData, nil
+	}
+	if !strings.Contains(_Padding, "ZERO") && !strings.Contains(_Padding, "ISO10126") && !strings.Contains(_Padding, "ANSIX923") && !strings.Contains(_Padding, "ISO97971") && !strings.Contains(_Padding, "PKCS7") && !strings.Contains(_Padding, "PKCS5") {
+		return decryptData, nil
+	}
+	length := len(decryptData)
+	if length < 1 {
+		return nil, errors.New("data nil")
+	}
+	if strings.Contains(_Padding, "ISO97971") {
+		padding := int(decryptData[length-1])
+		return decryptData[:(length-padding)-1], nil
+	}
+
+	padding := int(decryptData[length-1])
+	return decryptData[:(length - padding)], nil
+}
+
+func _AES_keyFactory(_key []byte) []byte {
+	var b bytes.Buffer
+	b.Write(_key)
+	{
+		_keySize := 0
+		_keyLen := len(_key)
+		if _keyLen >= 32 {
+			_keySize = 8
+		} else if _keyLen >= 24 {
+			_keySize = 6
+		} else {
+			_keySize = 4
+		}
+		if _keyLen < _keySize*4 {
+			b.Write(bytes.Repeat([]byte{byte(0)}, _keySize*4-_keyLen))
+		}
+	}
+	return b.Bytes()
+}
+func _AES_ivFactory(iv []byte) []byte {
+	var b bytes.Buffer
+	b.Write(iv)
+	_ivLen := len(iv)
+	if _ivLen < 8 {
+		b.Write(bytes.Repeat([]byte{byte(0)}, 16-_ivLen))
+	} else if b.Len() > 16 {
+		bb := b.Bytes()
+		return bb[0:16]
+	}
+	return b.Bytes()
+}
+func _DES_ivFactory(iv []byte) []byte {
+	_ivLen := len(iv)
+	var STMP []byte
+	if _ivLen < 8 {
+		tmp := append(STMP, bytes.Repeat([]byte{byte(0)}, 8-_ivLen)...)
+		tmp = append(iv, tmp...)
+		return tmp
+	}
+	return iv[:8]
+}
+func _AES_zeroPadding(ciphertext []byte, blockSize int) []byte {
+	ByteDance := len(ciphertext)
+	if ByteDance < 1 {
+		return []byte{}
+	}
+	padding := blockSize - ByteDance%blockSize
+	tmp := ciphertext
+	if padding%blockSize != 0 {
+		latest := bytes.Repeat([]byte{byte(padding)}, padding)
+		tmp = append(ciphertext, latest...)
+	}
+	return tmp
+}
+func _AES_iso10126padding(ciphertext []byte, blockSize int) []byte {
+	ByteDance := len(ciphertext)
+	if ByteDance < 1 {
+		return []byte{}
+	}
+	padding := blockSize - ByteDance%blockSize
+	tmp := ciphertext
+	for i := 0; i < padding-1; i++ {
+		x := mathrand.Intn(254) + 1
+		latest := bytes.Repeat([]byte{byte(x)}, 1)
+		tmp = append(tmp, latest...)
+	}
+	latest := bytes.Repeat([]byte{byte(padding)}, 1)
+	tmp = append(tmp, latest...)
+	return tmp
+}
+func _AES_ansiX923padding(ciphertext []byte, blockSize int) []byte {
+	ByteDance := len(ciphertext)
+	if ByteDance < 1 {
+		return []byte{}
+	}
+	padding := blockSize - ByteDance%blockSize
+	tmp := ciphertext
+	latest := bytes.Repeat([]byte{byte(padding)}, padding-1)
+	tmp = append(tmp, latest...)
+	latest = bytes.Repeat([]byte{byte(padding)}, 1)
+	tmp = append(tmp, latest...)
+	return tmp
+}
+func _AES_Pkcs5padding(ciphertext []byte, blockSize int) []byte {
+	padding := blockSize - len(ciphertext)%blockSize
+	latest := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(ciphertext, latest...)
+}
+func _DES_keyFactory(key []byte) []byte {
+	_keyLen := 0
+	var STMP []byte
+	_keyLen = len(key)
+	if _keyLen < 8 {
+		tmp := append(STMP, bytes.Repeat([]byte{byte(0)}, 8-_keyLen)...)
+		tmp = append(key, tmp...)
+		return tmp
+	}
+	return key[:8]
+}
+
+func StringReplaceAll(a, b, c string) string {
+	return strings.ReplaceAll(a, b, c)
+}
+
+func BytesReplaceAll(a, b, c []byte) []byte {
+	return []byte(strings.ReplaceAll(string(a), string(b), string(c)))
+}
+
+
+// 你可以在HTTP回调函数中执行此函数,快速操作响应
+func HTTPResponse404(Sunny HTTPEvent) {
+    Sunny.SetResponseCode(404)
+	H := Sunny.GetResponseHeader()
+	//响应状态码404,没有内容
+	H.Set("Server", "Sunny")
+	Sunny.SetResponseBody(make([]byte, 0))
+}
+
+// 你可以在HTTP回调函数中执行此函数,快速操作响应
+func HTTPResponse200JSon(Sunny HTTPEvent) {
+    Sunny.SetResponseCode(200)
+	H := Sunny.GetResponseHeader()
+	//响应状态码200,响应空的JSON对象
+	H.Set("Server", "Sunny")
+	H.Set("Content-Type", "application/json")
+	Sunny.SetResponseBody([]byte("{}"))
+}
+
+// 你可以在HTTP回调函数中执行此函数,快速操作响应
+func HTTPResponse200Array(Sunny HTTPEvent) {
+    Sunny.SetResponseCode(200)
+	H := Sunny.GetResponseHeader()
+	//响应状态码200,响应空的JSON数组
+	H.Set("Server", "Sunny")
+	H.Set("Content-Type", "application/json")
+	Sunny.SetResponseBody([]byte("[]"))
+}
+
+// 你可以在HTTP回调函数中执行此函数,快速操作响应
+func HTTPResponse200(Sunny HTTPEvent) {
+    Sunny.SetResponseCode(200)
+	H := Sunny.GetResponseHeader()
+	//响应状态码200,没有内容
+	H.Set("Server", "Sunny")
+	Sunny.SetResponseBody(make([]byte, 0))
+}
+
+// 你可以在HTTP回调函数中执行此函数,快速操作响应
+func HTTPResponse200IMG(Sunny HTTPEvent) {
+    Sunny.SetResponseCode(200)
+	H := Sunny.GetResponseHeader()
+	//响应状态码200,内容为1像素的图片
+	H.Set("Server", "Sunny")
+	H.Set("Content-Type", "image/gif")
+	Sunny.SetResponseBody(GoBase64Decode("R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="))
+}
+func stringReplace(a, b, c string) string {
+	return strings.ReplaceAll(a, b, c)
+}
+func bytesReplace(a, b, c []byte) []byte {
+	return bytes.ReplaceAll(a, b, c)
+}
+func Contains(a, b any) bool {
+	_a := ""
+	switch v := a.(type) {
+	case string:
+		_a = v
+		break
+	case []byte:
+		_a = string(v)
+	}
+	_b := ""
+	switch v := b.(type) {
+	case string:
+		_b = v
+		break
+	case []byte:
+		_b = string(v)
+	}
+	return strings.Contains(_a, _b)
+}
+func StringIndex(a, b string) int {
+	return strings.Index(a, b)
+}
+func BytesIndex(a, b []byte) int {
+	return bytes.Index(a, b)
+}
+func BytesAdd(a, b []byte) []byte {
+	var c bytes.Buffer
+	c.Write(a)
+	c.Write(b)
+	return c.Bytes()
+}
+func ReadFile(filePath string) []byte {
+	a, _ := os.ReadFile(filePath)
+	return a
+}
+func WriteFile(filePath string, data any) bool {
+	_data := make([]byte, 0)
+	switch v := data.(type) {
+	case string:
+		_data = []byte(v)
+		break
+	case []byte:
+		_data = v
+		break
+	}
+	return os.WriteFile(filePath, _data, 777) == nil
+}
+
+func SubString(str, left, Right string) string {
+	s := strings.Index(str, left)
+	if s < 0 {
+		return ""
+	}
+	s += len(left)
+	e := strings.Index(str[s:], Right)
+	if e+s <= s {
+		return ""
+	}
+	bs := make([]byte, e)
+	copy(bs, str[s:s+e])
+	return string(bs)
+}
+func toBytes(str string)[]byte{
+	return []byte(str)
+}
+func toLower(a string) string {
+	return strings.ToLower(a)
+}
+func ToUpper(a string) string {
+	return strings.ToUpper(a)
+}
+func TrimSpace(a string) string {
+	return strings.TrimSpace(a)
+}
+func DelSpace(a string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(a, " ", ""), "\u3000", "")
+}
+func StringToInt(a string) int {
+	i, err := strconv.Atoi(a)
+    if err != nil {
+      return 0
+    }
+    return i
+}
+func Sleep(a any) {
+	s := fmt.Sprintf("%v", a)
+	arr := strings.Split(s, ".")
+	if len(arr) > 0 {
+		vv := StringToInt(arr[0])
+		time.Sleep(time.Duration(vv) * time.Millisecond)
+	}
+}
+func IntToString(a any)string {
+    return fmt.Sprintf("%d",a)
+}
+func BytesToString(a []byte)string {
+    return string(a)
+}
+func GetTimestamp13() string {
+    return fmt.Sprintf("%d",time.Now().UnixNano() / int64(time.Millisecond))
+}
+func GetTimestamp10() string {
+    a:=GetTimestamp13()
+    if len(a)>10{
+        return a[0:10]
+    }
+    return a
+}
+func GetStringLeft(a string ,index int) string {
+    if index < 1 {
+		return ""
+	}
+    if index > len(a){
+        return a[0:index]
+    }
+    return a
+}
+func GetStringRight (s string ,index int) string {
+    if index < 1 {
+		return ""
+	}
+	if index > len(s) {
+		return s
+	}
+	return s[len(s)-index:]
+}
+func GetBytesLeft(a []byte ,index int) []byte {
+    if index < 1 {
+		return []byte{}
+	}
+    if index > len(a){
+        return a[0:index]
+    }
+    return a
+}
+func GetBytesRight (s []byte ,index int) []byte {
+    if index < 1 {
+		return []byte{}
+	}
+	if index > len(s) {
+		return s
+	}
+	return s[len(s)-index:]
+}
+func Base64ToHex(a string) string {
+	aa := GoBase64Decode(a)
+	return GoHexEncode(aa)
+}
+func HexToBase64(a string) string {
+	aa := GoHexDecode(a)
+	return GoBase64Encode(aa)
+}
+func OpenFile(filePath string) *os.File {
+	file, _ := os.Open(filePath)
+	return file
+}
+
+func GetFileSize(filePath string) int64 {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return -1
+	}
+	defer file.Close()
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return -1
+	}
+	return fileInfo.Size()
+}
+var delSpace=DelSpace
+var trimSpace=TrimSpace
+var subString=SubString
+var StringSub=SubString
+var stringSub=SubString
+var contains=Contains
+var BytesReplace=bytesReplace
+var StringReplace=stringReplace
+
+var DeflateCompress =   mmCompress.DeflateCompress
+var DeflateUnCompress = mmCompress.DeflateUnCompress
+var ZlibUnCompress =    mmCompress.ZlibUnCompress
+var ZlibCompress =      mmCompress.ZlibCompress
+var GzipCompress =      mmCompress.GzipCompress
+var BrUnCompress =      mmCompress.BrUnCompress
+var BrCompress =        mmCompress.BrCompress
+var GzipUnCompress =    mmCompress.GzipUnCompress
+var ZSTDCompress =      mmCompress.ZSTDCompress
+var ZSTDUnCompress =    mmCompress.ZSTDDecompress
+
+
+var deflateCompress =   mmCompress.DeflateCompress
+var deflateUnCompress = mmCompress.DeflateUnCompress
+var zlibUnCompress =    mmCompress.ZlibUnCompress
+var zlibCompress =      mmCompress.ZlibCompress
+var gzipCompress =      mmCompress.GzipCompress
+var brUnCompress =      mmCompress.BrUnCompress
+var brCompress =        mmCompress.BrCompress
+var gzipUnCompress =    mmCompress.GzipUnCompress
+var zstdCompress =      mmCompress.ZSTDCompress
+var zstdUnCompress =    mmCompress.ZSTDDecompress

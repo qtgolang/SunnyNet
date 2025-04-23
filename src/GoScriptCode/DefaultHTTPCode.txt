@@ -1,0 +1,230 @@
+package main
+
+//仅允许使用官方包
+import (
+	"bytes"
+	"strings"
+)
+
+/*
+   你可以右键，命令面板（或F1快捷键）,查看模板文件,或恢复到默认代码
+   当您修改完成后,右键测试保存即可
+*/
+
+// 脚本回调事件 -> HTTP 发起请求、HTTP 响应请求、HTTP 请求错误
+func Event_HTTP(Conn HTTPEvent) {
+	//不执行代码,仅查看模板代码
+	execCode := false
+	if !execCode {
+		return
+	}
+	//判断发起请求时
+	if Conn.Type() == 1 {
+		{
+			//对这个请求设置代理
+			Conn.SetAgent("socket5://admin:123456@127.0.0.1:8888", 30*1000)
+			Conn.SetAgent("http://admin:123456@127.0.0.1:8888", 30*1000)
+			//或者 无账号密码
+			Conn.SetAgent("socket5://127.0.0.1:8888", 30*1000)
+			Conn.SetAgent("http://127.0.0.1:8888", 30*1000)
+		}
+		{
+			//打印日志
+			log(Conn.URL(), Contains(Conn.URL(), "baidu.com"))
+		}
+		{
+			//判断当前请求的网址是否包含 baidu.com
+			if Contains(Conn.URL(), "baidu.com") {
+				if Conn.Method() == "POST" {
+					//修改POST提交的的数据
+					if contains(Conn.GetRequestBody(), "123456") {
+						Conn.SetRequestBody([]byte("654321"))
+					} else if contains(Conn.GetRequestBody(), "xxxxxxxxxxxxxx") {
+						//从文件读取内容
+						Conn.SetRequestBody(ReadFile(`c:\1.txt`))
+					} else {
+						Conn.SetRequestBody([]byte("123456"))
+					}
+				}
+				//如果网址包含 baidu.com
+				//修改当前网址为 https://qq.com
+				Conn.UpdateURL("https://qq.com")
+				return
+			}
+		}
+		if Contains(Conn.URL(), "bbs.125.la") {
+			RequestHeader := Conn.GetRequestHeader()
+			//直接响应，让HTTP不要发送给服务器
+			//Header 设置方式1
+			RequestHeader["token"] = []string{"11111"}
+			//Header 设置方式2
+			RequestHeader.Set("userId", "123456")
+
+			//设置响应状态码
+			Conn.SetResponseCode(200)
+			//设置响应数据
+			Conn.SetResponseBody(ReadFile(`D:\LICENSE.txt`))
+			//设置响应协议头
+			ResponseHeader := Conn.GetResponseHeader()
+			//Header 设置方式1
+			ResponseHeader["token"] = []string{"11111"}
+			//Header 设置方式2
+			ResponseHeader.Set("userId", "123456")
+			log(Conn.URL(), "33333333333333333")
+		}
+		if Contains(Conn.URL(), "www.abc.com") {
+			//对这个请求使用代理IP
+			Conn.SetAgent("http://admin:123456@127.0.0.1:8888", 3000)
+		}
+		if Contains(Conn.URL(), "userid=123") {
+			//通知抓包工具对这个请求下断点,在抓包工作区放行
+			Conn.SetBreak(true)
+		}
+		{
+			//不在工作区显示
+			if Contains(Conn.URL(), "www.126.com") {
+				//对网址中包含这个关键字的，不在抓包工作区显示,仅在发起请求时有效
+				Conn.SetDisplay(false)
+				return
+			}
+			if !Contains(Conn.URL(), "www.126.com") {
+				//对网址中包含这个关键字的，不在抓包工作区显示,仅在发起请求时有效
+				Conn.SetDisplay(false)
+				return
+			}
+		}
+	}
+	//判断完成时
+	if Conn.Type() == 2 {
+		//获取响应协议头对象
+		ResponseHeader := Conn.GetResponseHeader()
+		//获取服务器返回的Cookie
+		{
+			// 方式1 如果返回有多个Cookie  请注意大小写
+			{
+				_cookie := ResponseHeader["Set-Cookie"]
+				cookies := ""
+				for _, v := range _cookie {
+					arr := strings.Split(v, ";")
+					if len(arr) > 0 {
+						cookies += arr[0] + ";"
+					}
+				}
+				log(cookies)
+			}
+			// 方式2 只返回一个Cookie 请注意大小写
+			{
+				cookie := ResponseHeader.Get("Set-Cookie")
+				cookies := ""
+				arr := strings.Split(cookie, ";")
+				if len(arr) > 0 {
+					cookies += arr[0] + ";"
+				}
+				log(cookies)
+			}
+		}
+		//获取服务器返回的数据
+		{
+			//先自动判断数据是否压缩
+			Encoding := strings.ToLower(ResponseHeader.Get("Content-Encoding"))
+			switch Encoding {
+			case "gzip":
+				data := GzipUnCompress(Conn.GetResponseBody())
+				if len(data) > 0 {
+					Conn.SetResponseBody(data)
+					ResponseHeader.Del("Content-Encoding")
+				}
+				break
+			case "br":
+				data := BrUnCompress(Conn.GetResponseBody())
+				if len(data) > 0 {
+					Conn.SetResponseBody(data)
+					ResponseHeader.Del("Content-Encoding")
+				}
+				break
+			case "deflate":
+				data := DeflateCompress(Conn.GetResponseBody())
+				if len(data) > 0 {
+					Conn.SetResponseBody(data)
+					ResponseHeader.Del("Content-Encoding")
+				}
+				break
+			case "zstd":
+				data := ZSTDUnCompress(Conn.GetResponseBody())
+				if len(data) > 0 {
+					Conn.SetResponseBody(data)
+					ResponseHeader.Del("Content-Encoding")
+				}
+				break
+			default:
+				break
+			}
+			//如果返回数据中包含123456
+			if contains(Conn.GetResponseBody(), "123456") {
+				//修改返回值为123456
+				Conn.SetResponseBody(toBytes("123456"))
+			}
+		}
+	}
+
+}
+
+// WebSocket回调事件 -> 发送消息、收到消息、连接成功、连接断开
+func Event_WebSocket(Conn WebSocketEvent) {
+	if Conn.Type() == 1 {
+		//连接成功
+		return
+	}
+	if Conn.Type() == 2 {
+		//客户端发送数据
+		return
+	}
+	if Conn.Type() == 3 {
+		//客户端收到数据
+		return
+	}
+	if Conn.Type() == 4 {
+		//连接关闭
+		return
+	}
+}
+
+// tcp回调事件 -> 即将连接、发送消息、收到消息、连接成功、连接断开
+func Event_TCP(Conn TCPEvent) {
+	if Conn.Type() == 4 {
+		//即将开始连接
+		return
+	}
+	if Conn.Type() == 0 {
+		//连接成功
+		return
+	}
+	if Conn.Type() == 1 {
+		//客户端发送数据
+		return
+	}
+	if Conn.Type() == 2 {
+		//客户端收到数据
+		return
+	}
+	if Conn.Type() == 3 {
+		//连接关闭或连接失败
+		return
+	}
+}
+
+// udp回调事件 -> 发送消息、收到消息、连接断开
+func Event_UDP(Conn UDPEvent) {
+	if Conn.Type() == 1 {
+		//连接关闭
+		return
+	}
+	if Conn.Type() == 2 {
+		//客户端收到数据
+		return
+	}
+	if Conn.Type() == 3 {
+		//收到数据
+		return
+	}
+}

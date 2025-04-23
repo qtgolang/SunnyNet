@@ -1,0 +1,134 @@
+---
+name: CIRCL
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  amd64_job:
+    name: Go-${{matrix.GOVER}}/amd64
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        GOVER: ['1.21.1', '1.20.8']
+    steps:
+      - name: Setup Go-${{ matrix.GOVER }}
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.GOVER }}
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Linting
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.51.2
+          args: --config=./.etc/golangci.yml ./...
+      - name: Check shadowing
+        run: |
+         go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
+         go vet -vettool=$(which shadow) ./... 2>&1 | awk -f .etc/action.awk
+        shell: bash
+      - name: Verifying Code
+        run: |
+         go generate -v ./...
+         test -z "$(git status --porcelain)"
+         go vet ./...
+        shell: bash
+      - name: Building
+        run: go build -v ./...
+      - name: Testing
+        run: go test -v -count=1 ./...
+  exotic_job:
+    name: Go-${{matrix.CFG[2]}}/${{matrix.CFG[0]}}
+    needs: [amd64_job]
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        CFG: [[arm64, arm64v8, '1.21.1']]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Enabling Docker Experimental
+        run: |
+          echo $'{\n    "experimental": true\n}' | sudo tee /etc/docker/daemon.json
+          sudo service docker restart
+      - name: Pulling Images
+        run: |
+          docker pull -q multiarch/qemu-user-static
+          docker pull -q --platform linux/${{matrix.CFG[0]}} ${{matrix.CFG[1]}}/golang:${{matrix.CFG[2]}}
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+      - name: Testing
+        run: |
+          docker run --rm -v `pwd`:`pwd` -w `pwd` ${{matrix.CFG[1]}}/golang:${{matrix.CFG[2]}} go test -v ./...
+  build_modes:
+    needs: [amd64_job]
+    runs-on: ubuntu-22.04
+    name: Testing Build Modes
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.21.1'
+      - name: Build as Static
+        run: make circl_static
+      - name: Build as Plugin
+        run: make circl_plugin
+  coverage_amd64_job:
+    needs: [amd64_job]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-22.04
+    name: amd64/coverage
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.21.1'
+      - name: Produce Coverage
+        run: go test -coverprofile=./coverage.txt ./...
+      - name: Upload Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          file: ./coverage.txt
+  osCompat:
+    runs-on: ${{ matrix.os }}
+    needs: [amd64_job]
+    name: Running on ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-11, windows-2019]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.21.1'
+      - name: Building
+        run: go build -v ./...
+      - name: Testing
+        run: go test -v -count=1 ./...
+  analyze:
+    name: Analyze with CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: go
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: "/language:go"

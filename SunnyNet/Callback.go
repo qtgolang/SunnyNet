@@ -127,6 +127,9 @@ func (s *proxyRequest) CallbackTCPRequest(callType int, _msg *public.TcpMsg, Rem
 	}
 	Call.Call(s.TcpCall, s.Global.SunnyContext, LocalAddr, hostname, int(callType), MessageId, msg.Data.Bytes(), msg.Data.Len(), s.Theology, pid)
 }
+func (s *proxyRequest) UpdateRawTarget(i uint32) {
+	s.rawTarget = i
+}
 
 // CallbackBeforeRequest HTTP发起请求处理回调
 func (s *proxyRequest) CallbackBeforeRequest() {
@@ -181,6 +184,7 @@ func (s *proxyRequest) CallbackBeforeRequest() {
 		_serverIP:        s.Response.ServerIP,
 		_localAddress:    s.Conn.LocalAddr().String(),
 		_OutRouterIPFunc: s.SetOutRouterIP,
+		updateRawTarget:  s.UpdateRawTarget,
 	}
 	s.Global.scriptHTTPCall(m)
 	s.TlsConfig = m._tls
@@ -249,6 +253,7 @@ func (s *proxyRequest) CallbackBeforeResponse() {
 		_serverIP:        s.Response.ServerIP,
 		_localAddress:    s.Conn.LocalAddr().String(),
 		_OutRouterIPFunc: s.SetOutRouterIP,
+		updateRawTarget:  s.UpdateRawTarget,
 	}
 	s.Global.scriptHTTPCall(m)
 	s.Response.Response = m._response
@@ -351,6 +356,7 @@ func (s *proxyRequest) CallbackError(err string) {
 		_serverIP:        s.Response.ServerIP,
 		_localAddress:    s.Conn.LocalAddr().String(),
 		_OutRouterIPFunc: s.SetOutRouterIP,
+		updateRawTarget:  s.UpdateRawTarget,
 	}
 	s.Global.scriptHTTPCall(m)
 	if s._Display == false {

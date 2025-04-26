@@ -314,7 +314,7 @@ func SetRequestUrl(MessageId int, URI string) bool {
 	k.Request.Host = Host
 	k.Request.URL = _u
 	k.Request.RequestURI = ""
-
+	k.UpdateRawTarget(0)
 	k.Request.SetContext(public.Connect_Raw_Address, func() string { return Host })
 	if k.Request.Header.Get("host") != "" {
 		k.Request.Header.Set("host", k.Request.Host)

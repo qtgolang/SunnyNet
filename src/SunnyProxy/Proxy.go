@@ -200,9 +200,9 @@ func (p *Proxy) Dial(network, addr string, OutRouterIP *net.TCPAddr) (net.Conn, 
 		us = "Authorization: Basic " + ns + "\r\n"
 		//部分HTTP代理 需要 Proxy-Authorization
 		us += "Proxy-Authorization: Basic " + ns + "\r\n"
-		//部分HTTP代理 需要 Proxy-Connection
-		us += "Proxy-Connection: Keep-Alive\r\n"
 	}
+	//部分HTTP代理 需要 Proxy-Connection
+	us += "Proxy-Connection: Keep-Alive\r\n"
 	_, e = conn.Write([]byte("CONNECT " + addr + " HTTP/1.1\r\nHost: " + addr + "\r\n" + us + "\r\n"))
 	if e != nil {
 		return nil, e

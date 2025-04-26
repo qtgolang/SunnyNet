@@ -16,6 +16,24 @@ import (
 	"unsafe"
 )
 
+var _mustHTTP11 = make(map[uint32]*time.Time)
+var _mustHTTP11_lock sync.Mutex
+
+func init() {
+	go func() {
+		for {
+			time.Sleep(time.Minute)
+			_mustHTTP11_lock.Lock()
+			Nox := time.Now()
+			for key, value := range _mustHTTP11 {
+				if Nox.Sub(*value) > time.Minute*3 {
+					delete(_mustHTTP11, key)
+				}
+			}
+			_mustHTTP11_lock.Unlock()
+		}
+	}()
+}
 func Do(req *http.Request, RequestProxy *SunnyProxy.Proxy, CheckRedirect bool, config *tls.Config, outTime time.Duration, GetTLSValues func() []uint16, MConn net.Conn) (Response *http.Response, Conn net.Conn, err error, Close func()) {
 	if req.ProtoMajor == 2 {
 		Method := req.Method
@@ -50,6 +68,14 @@ func Do(req *http.Request, RequestProxy *SunnyProxy.Proxy, CheckRedirect bool, c
 		}
 		cfg.InsecureSkipVerify = true
 	}
+	_hashCode := public.SumHashCode(req.Host)
+	_mustHTTP11_lock.Lock()
+	if _mustHTTP11[_hashCode] != nil {
+		cfg.NextProtos = public.HTTP1NextProtos
+		x := time.Now()
+		_mustHTTP11[_hashCode] = &x
+	}
+	_mustHTTP11_lock.Unlock()
 	handshakeCount := 0
 	for {
 		if cfg != nil && GetTLSValues != nil {
@@ -63,7 +89,20 @@ func Do(req *http.Request, RequestProxy *SunnyProxy.Proxy, CheckRedirect bool, c
 			if Conn != nil {
 				_ = Conn.Close()
 			}
+
 			ers := err.Error()
+
+			if strings.Contains(ers, "stream error: stream ID") && len(cfg.NextProtos) == 2 {
+				cfg.NextProtos = public.HTTP1NextProtos
+				_mustHTTP11_lock.Lock()
+				x := time.Now()
+				_mustHTTP11[_hashCode] = &x
+				_mustHTTP11_lock.Unlock()
+				continue
+			}
+
+			//Get "https://www.zjwubei.com:520/": stream error: stream ID 1; CANCEL; received from peer
+
 			if strings.Contains(ers, "handshake") || strings.Contains(ers, "connection") || strings.Contains(ers, "EOF") {
 				handshakeCount++
 				if handshakeCount > 10 {
@@ -156,18 +195,11 @@ var httpClientMap map[uint32]clientList
 
 type clientList map[uintptr]*clientPart
 
-func hashCode(s string) uint32 {
-	var hash int32 = 0
-	for _, ch := range s {
-		hash = 31*hash + ch
-	}
-	return uint32(hash)
-}
 func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, timeout time.Duration) *clientPart {
 	httpLock.Lock()
 	defer httpLock.Unlock()
 	outRouterIP, _ := req.Context().Value(public.OutRouterIPKey).(*net.TCPAddr)
-	s := ""
+	s := dns.GetDnsServer()
 	if outRouterIP != nil {
 		s += outRouterIP.String() + "|"
 	} else {
@@ -183,7 +215,7 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 		}
 		s += strings.Join(cfg.NextProtos, "-")
 	}
-	hash := hashCode(s)
+	hash := public.SumHashCode(s)
 	if clients, ok := httpClientMap[hash]; ok {
 		if len(clients) > 0 {
 			for key, client := range clients {

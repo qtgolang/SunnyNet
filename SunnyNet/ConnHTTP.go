@@ -34,6 +34,7 @@ type httpConn struct {
 	_isRandomCipherSuites bool
 	_localAddress         string
 	_OutRouterIPFunc      func(string) bool
+	updateRawTarget       func(int uint32)
 }
 
 func (k *httpConn) SetOutRouterIP(way string) bool {
@@ -81,6 +82,9 @@ func (h *httpConn) UpdateURL(NewUrl string) bool {
 	h._request.URL = a
 	h._request.Host = h._request.URL.Host
 	h._request.RequestURI = ""
+	if h.updateRawTarget != nil {
+		h.updateRawTarget(0)
+	}
 	h._request.SetContext(public.Connect_Raw_Address, func() string { return a.Host })
 	if h._request.Header.Get("host") != "" {
 		h._request.Header.Set("host", h._request.URL.Host)

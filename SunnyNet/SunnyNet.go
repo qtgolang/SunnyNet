@@ -210,6 +210,7 @@ type proxyRequest struct {
 	_isRandomCipherSuites bool
 	_SocksUser            string
 	outRouterIP           *net.TCPAddr
+	rawTarget             uint32
 }
 
 var sUser = make(map[int]string)
@@ -1016,6 +1017,27 @@ func (s *proxyRequest) doRequest() error {
 	var err error
 	var Close func()
 	do, n, err, Close = httpClient.Do(s.Request, s.Proxy, false, s.TlsConfig, s.SendTimeout, s.getTLSValues, s.Conn)
+	if err == nil && do != nil {
+		if s.rawTarget != 0 {
+			whoisLock.Lock()
+			obj := httpTypeMap[s.rawTarget]
+			if obj != nil {
+				if obj._type == whoisUndefined {
+					obj._time = time.Now()
+					if s.Request.URL.Scheme != "https" {
+						obj._type = whoisNoHTTPS
+					} else {
+						if do.ProtoMajor == 2 {
+							obj._type = whoisHTTPS2
+						} else {
+							obj._type = whoisHTTPS1
+						}
+					}
+				}
+			}
+			whoisLock.Unlock()
+		}
+	}
 	s.Response.Conn = n
 	ip, _ := s.Request.Context().Value(public.SunnyNetServerIpTags).(string)
 	if ip != "" {
@@ -1093,9 +1115,11 @@ func (s *proxyRequest) https() {
 			if res == whoisUndefined {
 				res, cert = ClientRequestIsHttps(s.Global, s.Target.String(), serverName)
 			}
-			if res == whoisNoHTTPS || res == whoisUndefined {
+			if res == whoisNoHTTPS {
 				_ = s.RwObj.Close()
 				return
+			} else if res == whoisUndefined {
+				s.rawTarget = public.SumHashCode(s.Target.String())
 			}
 			if res == whoisHTTPS1 {
 				tlsConfig.NextProtos = public.HTTP1NextProtos
@@ -1720,6 +1744,7 @@ func (s *proxyRequest) CompleteRequest(req *http.Request) {
 	}
 	//验证处理是否websocket请求,如果是直接处理
 	if s.handleWss() {
+
 		return
 	}
 	//为了保证在请求完成时,还能获取到到请求的提交信息,先备份数据
@@ -2677,6 +2702,7 @@ func (s *proxyRequest) clone() *proxyRequest {
 		NoRepairHttp:  s.NoRepairHttp,
 		defaultScheme: s.defaultScheme,
 		SendTimeout:   s.SendTimeout,
+		rawTarget:     s.rawTarget,
 	}
 	if s.outRouterIP != nil {
 		req.outRouterIP = &net.TCPAddr{IP: s.outRouterIP.IP}

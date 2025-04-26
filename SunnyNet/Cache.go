@@ -39,7 +39,7 @@ const (
 	localCert
 )
 
-var httpTypeMap = make(map[string]*httpTypeInfo)
+var httpTypeMap = make(map[uint32]*httpTypeInfo)
 
 const whoisUndefined = 0
 const whoisNoHTTPS = 1
@@ -49,7 +49,6 @@ const whoisHTTPS2 = 3
 type httpTypeInfo struct {
 	_type byte
 	_time time.Time
-	_lock sync.Mutex
 	_cert *x509.Certificate
 }
 
@@ -69,9 +68,10 @@ func init() {
 	go clean()
 }
 func ClientIsHttps(server string) (byte, *x509.Certificate) {
+	hashCode := public.SumHashCode(server)
 	whoisLock.Lock()
 	defer whoisLock.Unlock()
-	res := httpTypeMap[server]
+	res := httpTypeMap[hashCode]
 	if res == nil {
 		return whoisUndefined, nil
 	}
@@ -87,27 +87,30 @@ ClientRequestIsHttps
 */
 func ClientRequestIsHttps(Sunny *Sunny, targetAddr string, serverName string) (res byte, cert *x509.Certificate) {
 	var obj *httpTypeInfo
+	hashCode := public.SumHashCode(targetAddr)
 	whoisLock.Lock()
-	if httpTypeMap[targetAddr] == nil {
+	if httpTypeMap[hashCode] == nil {
 		obj = &httpTypeInfo{_time: time.Now()}
-		httpTypeMap[targetAddr] = obj
+		httpTypeMap[hashCode] = obj
 	} else {
-		obj = httpTypeMap[targetAddr]
+		obj = httpTypeMap[hashCode]
 	}
 	whoisLock.Unlock()
-	obj._lock.Lock()
 	if obj._type != whoisUndefined {
-		obj._lock.Unlock()
 		return obj._type, obj._cert
 	}
 	defer func() {
 		if res != whoisUndefined {
 			whoisLock.Lock()
+			if obj._type != whoisUndefined && obj._type != whoisNoHTTPS {
+				obj._time = time.Now()
+				whoisLock.Unlock()
+				return
+			}
 			obj._type = res
 			obj._cert = cert
 			obj._time = time.Now()
 			whoisLock.Unlock()
-			obj._lock.Unlock()
 		}
 	}()
 	proxyHost, proxyPort, e := net.SplitHostPort(targetAddr)

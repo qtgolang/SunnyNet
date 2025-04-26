@@ -571,5 +571,12 @@ func IsLocalIP(ipStr string) (bool, net.IP) {
 
 	return false, nil
 }
+func SumHashCode(s string) uint32 {
+	var hash int32 = 0
+	for _, ch := range s {
+		hash = 31*hash + ch
+	}
+	return uint32(hash)
+}
 
 var RouterIPInspect = SunnyProxy.RouterIPInspect

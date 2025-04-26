@@ -556,7 +556,7 @@ func Java_com_SunnyNet_api_RandomRequestCipherSuites(envObj uintptr, clazz uintp
 }
 
 /*
-Java_com_SunnyNet_api_SetRequestHTTP2Config  设置HTTP 2.0 请求指纹配置 (若服务器支持则使用,若服务器不支持,设置了也不会使用)
+Java_com_SunnyNet_api_SetRequestHTTP2Config  设置HTTP 2.0 请求指纹配置 (若服务器支持则使用,若服务器不支持,设置了也不会使用),如果强制请求发送时使用HTTP/1.1 请填入参数 http/1.1
 */
 //export Java_com_SunnyNet_api_SetRequestHTTP2Config
 func Java_com_SunnyNet_api_SetRequestHTTP2Config(envObj uintptr, clazz uintptr, MessageId int64, h2Config uintptr) bool {

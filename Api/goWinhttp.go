@@ -443,7 +443,7 @@ func HTTPSetRandomTLS(Context int, randomTLS bool) bool {
 }
 
 // SetH2Config
-// HTTP 客户端 设置HTTP2指纹
+// HTTP 客户端 设置HTTP2指纹,如果强制请求发送时使用HTTP/1.1 请填入参数 http/1.1
 func SetH2Config(Context int, h2Config string) bool {
 	k := LoadHTTPClient(Context)
 	if k == nil {
@@ -451,6 +451,16 @@ func SetH2Config(Context int, h2Config string) bool {
 	}
 	k.lock.Lock()
 	defer k.lock.Unlock()
+
+	isHTTP1 := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(h2Config), " ", "")) == "http/1.1"
+	if isHTTP1 {
+		if k.tlsConfig == nil {
+			k.tlsConfig = &tls.Config{}
+		}
+		k.tlsConfig.NextProtos = public.HTTP1NextProtos
+		k.req.SetHTTP2Config(nil)
+		return true
+	}
 	c, e := http.StringToH2Config(h2Config)
 	if e != nil {
 		return false

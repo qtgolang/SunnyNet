@@ -257,6 +257,8 @@ type ConnHTTPCall interface {
 		public.HTTP2_Fingerprint_Config_Chrome_103_105
 
 		(你可以将以上任意模板中的数值随机，以达到随机指纹的效果)
+
+		如果强制请求发送时使用HTTP/1.1 请填入参数 http/1.1
 	*/
 	SetHTTP2Config(config string) bool
 }

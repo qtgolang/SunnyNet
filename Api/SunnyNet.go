@@ -109,7 +109,7 @@ func SetRequestProxy(MessageId int, ProxyUrl string, outTime int) bool {
 	return true
 }
 
-// SetRequestHTTP2Config 设置HTTP 2.0 请求指纹配置 (若服务器支持则使用,若服务器不支持,设置了也不会使用)
+// SetRequestHTTP2Config 设置HTTP 2.0 请求指纹配置 (若服务器支持则使用,若服务器不支持,设置了也不会使用),如果强制请求发送时使用HTTP/1.1 请填入参数 http/1.1
 func SetRequestHTTP2Config(MessageId int, h2Config string) bool {
 	k, ok := SunnyNet.GetSceneProxyRequest(MessageId)
 	if ok == false {
@@ -123,6 +123,12 @@ func SetRequestHTTP2Config(MessageId int, h2Config string) bool {
 	}
 	k.Lock.Lock()
 	defer k.Lock.Unlock()
+	isHTTP1 := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(h2Config), " ", "")) == "http/1.1"
+	if isHTTP1 {
+		k.TlsConfig.NextProtos = public.HTTP1NextProtos
+		k.Request.SetHTTP2Config(nil)
+		return true
+	}
 	k.TlsConfig.NextProtos = public.HTTP2NextProtos
 	if h2Config != "" {
 		c, e := http.StringToH2Config(h2Config)

@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 type ConnHTTP Interface.ConnHTTPCall
@@ -105,6 +106,12 @@ func (h *httpConn) SetHTTP2Config(h2Config string) bool {
 	if h._tls == nil {
 		h._request.SetHTTP2Config(nil)
 		return false
+	}
+	isHTTP1 := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(h2Config), " ", "")) == "http/1.1"
+	if isHTTP1 {
+		h._tls.NextProtos = public.HTTP1NextProtos
+		h._request.SetHTTP2Config(nil)
+		return true
 	}
 	h._tls.NextProtos = public.HTTP2NextProtos
 	if h2Config != "" {

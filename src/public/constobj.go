@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-const SunnyVersion = "2025-04-26"
+const SunnyVersion = "2025-04-29"
 const Information = `
 ------------------------------------------------------
        欢迎使用 SunnyNet 网络中间件 - V` + SunnyVersion + `   
@@ -27,9 +27,9 @@ const Information = `
            若您下载并使用即视为您知晓并同意
 ------------------------------------------------------
         Sunny开源项目网站：https://esunny.vip
-           Sunny QQ交流群(一群)：751406884
-           Sunny QQ交流群(二群)：545120699
-           Sunny QQ交流群(三群)：170902713
+		 SunnyNet QQ交流群(一群)：751406884
+         SunnyNet QQ交流群(二群)：545120699
+         SunnyNet QQ交流群(三群)：170902713
        QQ频道：https://pd.qq.com/g/SunnyNetV5
 ------------------------------------------------------
 

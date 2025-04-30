@@ -177,6 +177,7 @@ func (s *proxyRequest) httpCall(rw http.ResponseWriter, req *http.Request) {
 		res.Header = reHeader
 	}
 	Target.Parse(r.Target.String(), 0)
+	res.TransferEncoding = nil
 	r.sendHttp(res)
 }
 

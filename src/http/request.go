@@ -379,7 +379,7 @@ func (r *Request) GetData() []byte {
 		} else {
 			r.ContentLength = 0
 		}
-
+		r.Header.Set("Content-Length", fmt.Sprintf("%d", len(buf)))
 		r.Body = io.NopCloser(bytes.NewBuffer(buf))
 		return buf
 	}

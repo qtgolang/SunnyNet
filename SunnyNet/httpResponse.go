@@ -54,10 +54,12 @@ func (r *response) WriteHeader(DataLen ...string) []byte {
 	}
 
 	r.DelHeader("content-length")
-	if r.ProtoMajor == 2 {
-		r.rw.Header().Set("content-length", contentLength)
-	} else {
-		r.rw.Header().Set("Content-Length", contentLength)
+	if contentLength != "-1" {
+		if r.ProtoMajor == 2 {
+			r.rw.Header().Set("content-length", contentLength)
+		} else {
+			r.rw.Header().Set("Content-Length", contentLength)
+		}
 	}
 	for name, values := range r.Header {
 		if strings.ToLower(name) == "content-type" {

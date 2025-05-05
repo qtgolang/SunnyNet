@@ -1771,7 +1771,11 @@ func (s *proxyRequest) CompleteRequest(req *http.Request) {
 		s.Error(err, true)
 		return
 	}
-	Length, _ := strconv.Atoi(s.Response.Header.Get("Content-Length"))
+	Length := -1
+	Length_ := s.Response.Header.Get("Content-Length")
+	if Length_ != "" {
+		Length, _ = strconv.Atoi(Length_)
+	}
 	Method := ""
 	if req != nil {
 		Method = req.Method
@@ -1857,7 +1861,6 @@ func (s *proxyRequest) copyBuffer(Method string, ExpectLen int) {
 					_ = dstConn.SetDeadline(time.Time{})
 					s.Error(public.ProvideForwardingServiceOnly, s._Display)
 					s.Response.WriteHeader(strconv.Itoa(ExpectLen))
-
 				}
 				nr = buff.Len()
 				nw, ew := s.Response.Write(public.CopyBytes(buff.Bytes()))

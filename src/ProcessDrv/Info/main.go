@@ -270,5 +270,9 @@ func IsFilterRequests(fileName, addr string) bool {
 		//如果微信连接到本机的这个请求被拦截,小程序无法打开,目前不清楚原因
 		return true
 	}
+	if strings.Index(strings.ToLower(fileName), "steamwebhelper.exe") != -1 && (strings.Contains(addr, "::1") || strings.Contains(addr, "127.0.0.1")) {
+		//如果steam连接到本机的这个请求被拦截,steam无法打开,目前不清楚原因
+		return true
+	}
 	return false
 }

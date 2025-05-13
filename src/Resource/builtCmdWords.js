@@ -794,9 +794,9 @@ window.builtCmdWords =  [
         name: ['BytesToString', '到字符串', '字节集到字符串'],
         zName: [["dzfc","到字符串"],["zjjdzfc","字节集到字符串"]],
         insertText: 'BytesToString(${1:bs}$0)',
-        detail: "字符串到字节集",
+        detail: "字节集到字符串",
         contents: [
-            {value: '**字符串到字节集**'},
+            {value: '**字节集到字符串**'},
             {value: '**参数说明**'},
             {value: '参数1:bs     字节集类型  [待转换的字节集]'},
             {value: '返回值:字符串'},

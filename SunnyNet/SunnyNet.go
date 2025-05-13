@@ -823,6 +823,7 @@ func (s *proxyRequest) httpProcessing(aheadData []byte, Tag string) {
 		h2, _ = s.RwObj.Peek(11 - len(aheadData))
 	}
 	hh = []byte(string(aheadData) + string(h2))
+ 
 	if string(hh) == "PRI * HTTP/" {
 		s.defaultScheme = "https"
 		s.h2Request(aheadData)
@@ -1160,7 +1161,11 @@ func (s *proxyRequest) https() {
 				err = noHttps
 			} else {
 				tlsConfig.Certificates = []tls.Certificate{*certificate}
-				tlsConfig.ServerName = ServerName
+				if serverName != "" {
+					tlsConfig.ServerName = serverName
+				} else {
+					tlsConfig.ServerName = ServerName
+				}
 				tlsConfig.InsecureSkipVerify = true
 				//tlsConfig.CipherSuites=
 				//继续握手
@@ -1183,6 +1188,7 @@ func (s *proxyRequest) https() {
 				}
 				_ = tlsConn.SetDeadline(time.Now().Add(30 * time.Second))
 			}
+
 		}
 	} else {
 		isRules := s.Global.tcpRules(serverName, s.Target.Host)

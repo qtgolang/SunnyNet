@@ -57,7 +57,7 @@ func clean() {
 		time.Sleep(time.Minute)
 		whoisLock.Lock()
 		for key, v := range httpTypeMap {
-			if time.Now().Sub(v._time) > time.Minute*10 {
+			if time.Now().Sub(v._time) > time.Minute*9 {
 				delete(httpTypeMap, key)
 			}
 		}
@@ -254,6 +254,23 @@ func createLocalCert(Sunny *Sunny, cert *x509.Certificate, serverName, host stri
 	var mHost string
 	var keyName string
 	var err error
+	if cert != nil {
+		not := time.Now().AddDate(0, 0, 365)
+		certByte, priByte, er := generatePem(cert, mHost, parent, priv)
+		if er == nil {
+			certificate, er1 := tls.X509KeyPair(certByte, priByte)
+			if er1 == nil {
+				DNSNames := cert.DNSNames
+				for _, v := range cert.IPAddresses {
+					DNSNames = append(DNSNames, v.String())
+				}
+				whoisLock.Lock()
+				whois[host] = &_cert{Cert: &certificate, Type: netCert, Expire: &not, DNSNames: DNSNames}
+				whoisLock.Unlock()
+				return &certificate, DNSNames
+			}
+		}
+	}
 	if serverName == "" || serverName == "null" {
 		//是否为DNS解析服务器,如果是直接本地生成证书即可,就不需要从网络获取证书了
 		if !strings.HasSuffix(host, ":853") {
@@ -308,7 +325,8 @@ func createNetCert(Sunny *Sunny, cert *x509.Certificate, host string, parent *x5
 		if rr == nil {
 			return nil, nil, _GetIpCertError
 		}
-		certByte, priByte, not, er := generatePem(rr, mHost, parent, priv)
+		not := time.Now().AddDate(0, 0, 365)
+		certByte, priByte, er := generatePem(rr, mHost, parent, priv)
 		if er != nil {
 			return nil, nil, er
 		}
@@ -321,7 +339,7 @@ func createNetCert(Sunny *Sunny, cert *x509.Certificate, host string, parent *x5
 			DNSNames = append(DNSNames, v.String())
 		}
 		whoisLock.Lock()
-		whois[host] = &_cert{Cert: &certificate, Type: netCert, Expire: not, DNSNames: DNSNames}
+		whois[host] = &_cert{Cert: &certificate, Type: netCert, Expire: &not, DNSNames: DNSNames}
 		whoisLock.Unlock()
 		return &certificate, DNSNames, nil
 	}
@@ -394,7 +412,7 @@ func GetIpAddressHost(proxy *SunnyProxy.Proxy, ipAddress string, outRouterIP *ne
 
 var _GetIpCertError = fmt.Errorf("no success Get Certificate")
 
-func generatePem(template *x509.Certificate, mHost string, parent *x509.Certificate, priv *rsa.PrivateKey) ([]byte, []byte, *time.Time, error) {
+func generatePem(template *x509.Certificate, mHost string, parent *x509.Certificate, priv *rsa.PrivateKey) ([]byte, []byte, error) {
 	template1 := x509.Certificate{
 		SerialNumber:                template.SerialNumber,                // 序列号，CA 颁发的唯一序列号，通常为随机生成
 		Subject:                     template.Subject,                     // 证书主题，包含持有者的信息（国家、组织等）
@@ -426,7 +444,7 @@ func generatePem(template *x509.Certificate, mHost string, parent *x509.Certific
 	}
 	cer, err := x509.CreateCertificate(rand.Reader, &template1, parent, &priv.PublicKey, priv)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	return pem.EncodeToMemory(&pem.Block{ // 证书
 			Type:  "CERTIFICATE",
@@ -434,7 +452,7 @@ func generatePem(template *x509.Certificate, mHost string, parent *x509.Certific
 		}), pem.EncodeToMemory(&pem.Block{ // 私钥
 			Type:  "RSA PRIVATE KEY",
 			Bytes: x509.MarshalPKCS1PrivateKey(priv),
-		}), &template1.NotAfter, err
+		}), err
 }
 func generatePemTemp(mHost string, parent *x509.Certificate, priv *rsa.PrivateKey) ([]byte, []byte, *time.Time, error) {
 	serialNumber, _ := rand.Int(rand.Reader, public.MaxBig)
@@ -511,10 +529,12 @@ func init() {
 			rootKey = obj.rootKey
 			tempNetLock.Unlock()
 			rr, err = GetIpAddressHost(obj.proxy, host, obj.outRouterIP)
+			not1 := time.Now().AddDate(0, 0, 365)
+			not = &not1
 			if rr == nil {
 				goto gg
 			}
-			certByte, priByte, not, err = generatePem(rr, host, rootCa, rootKey)
+			certByte, priByte, err = generatePem(rr, host, rootCa, rootKey)
 			if err != nil {
 				goto gg
 			}

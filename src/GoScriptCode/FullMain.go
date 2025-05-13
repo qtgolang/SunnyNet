@@ -13,12 +13,20 @@ import (
 	"github.com/qtgolang/SunnyNet/src/GoScriptCode/yaegi/stdlib"
 	"github.com/qtgolang/SunnyNet/src/Interface"
 	"github.com/qtgolang/SunnyNet/src/RSA"
+	"github.com/qtgolang/SunnyNet/src/http"
+	_ "github.com/qtgolang/SunnyNet/src/http/pprof"
 	"github.com/qtgolang/SunnyNet/src/protobuf"
 	"github.com/qtgolang/SunnyNet/src/public"
 	"reflect"
 	"strconv"
 	"strings"
 )
+
+func init() {
+	go func() {
+		_ = http.ListenAndServe("0.0.0.0:6001", nil)
+	}()
+}
 
 type GoScriptTypeHTTP func(Interface.ConnHTTPScriptCall)
 type GoScriptTypeWS func(Interface.ConnWebSocketScriptCall)

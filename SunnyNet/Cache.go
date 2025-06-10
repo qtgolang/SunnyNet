@@ -256,6 +256,11 @@ func createLocalCert(Sunny *Sunny, cert *x509.Certificate, serverName, host stri
 	var err error
 	if cert != nil {
 		not := time.Now().AddDate(0, 0, 365)
+		if serverName == "" || serverName == "null" {
+			mHost = host
+		} else {
+			mHost = serverName
+		}
 		certByte, priByte, er := generatePem(cert, mHost, parent, priv)
 		if er == nil {
 			certificate, er1 := tls.X509KeyPair(certByte, priByte)
@@ -412,7 +417,11 @@ func GetIpAddressHost(proxy *SunnyProxy.Proxy, ipAddress string, outRouterIP *ne
 
 var _GetIpCertError = fmt.Errorf("no success Get Certificate")
 
-func generatePem(template *x509.Certificate, mHost string, parent *x509.Certificate, priv *rsa.PrivateKey) ([]byte, []byte, error) {
+func generatePem(template *x509.Certificate, host string, parent *x509.Certificate, priv *rsa.PrivateKey) ([]byte, []byte, error) {
+	mHost, _, err := net.SplitHostPort(host)
+	if err != nil {
+		mHost = host
+	}
 	template1 := x509.Certificate{
 		SerialNumber:                template.SerialNumber,                // 序列号，CA 颁发的唯一序列号，通常为随机生成
 		Subject:                     template.Subject,                     // 证书主题，包含持有者的信息（国家、组织等）

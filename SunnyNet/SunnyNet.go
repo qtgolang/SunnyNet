@@ -579,7 +579,6 @@ func connectToTarget(s *proxyRequest, proxyTools *SunnyProxy.Proxy, outRouterIP 
 		ProxyHost = proxyTools.Host
 		dial = proxyTools.Dial
 	}
-
 	ip = dns.GetFirstIP(s.Target.Host, ProxyHost)
 	if ip != nil {
 		remoteAddr := SunnyProxy.FormatIP(ip, fmt.Sprintf("%d", s.Target.Port))
@@ -823,7 +822,7 @@ func (s *proxyRequest) httpProcessing(aheadData []byte, Tag string) {
 		h2, _ = s.RwObj.Peek(11 - len(aheadData))
 	}
 	hh = []byte(string(aheadData) + string(h2))
- 
+
 	if string(hh) == "PRI * HTTP/" {
 		s.defaultScheme = "https"
 		s.h2Request(aheadData)
@@ -862,6 +861,23 @@ func (s *proxyRequest) httpProcessing(aheadData []byte, Tag string) {
 			}
 		}
 		if isRules && Method != public.HttpMethodCONNECT {
+			// 每次最多读取 64 字节
+			tmpBuf := make([]byte, 64)
+			for {
+				// 检查是否还有缓冲数据
+				if s.RwObj.Buffered() == 0 {
+					break
+				}
+				// 设置 10 毫秒超时
+				_ = s.RwObj.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+				// 读取数据
+				n, err := s.RwObj.Read(tmpBuf)
+				if err != nil || n == 0 {
+					break
+				}
+				// 写入缓冲区
+				buff.Write(tmpBuf[:n])
+			}
 			_ = s.RwObj.SetReadDeadline(time.Time{})
 			if s.Global.disableTCP {
 				return

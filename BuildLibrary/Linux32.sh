@@ -10,7 +10,7 @@ tmpPath=$(dirname "$(readlink -f "$0")")
 parentPath=$(dirname "$tmpPath")
 cd "$parentPath"
 
-go build -buildmode=c-shared  -ldflags "-s -w" -o "$tmpPath/Library/Linux/x86/Sunny.so"
+go build  -trimpath -buildmode=c-shared  -ldflags "-s -w" -o "$tmpPath/Library/Linux/x86/Sunny.so"
 # 检查命令的退出状态码
 if [ $? -ne 0 ]; then
   echo ""

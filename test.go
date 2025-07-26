@@ -69,14 +69,19 @@ func Test() {
 		Sunny.ProcessALLName(true, false)	//捕获全部进程开始后，添加进程名称-PID无效
 	*/
 	//Sunny.SetMustTcpRegexp("124.221.161.122", true)
-	//Sunny.SetGlobalProxy("socket://127.0.0.1:2026", 60000)
+	//
 	//Sunny.SetOutRouterIP("192.168.31.154")
 	//Sunny.SetMustTcpRegexp("shopr-cnlive.mcoc-cdn.cn", false)
-	//Sunny.MustTcp(true)
+
 	//设置回调地址
 	Sunny.SetGoCallback(HttpCallback, TcpCallback, WSCallback, UdpCallback)
 	Port := 2025
 	Sunny.SetPort(Port).Start()
+	//Sunny.MustTcp(true)
+	//Sunny.SetGlobalProxy("socket://192.168.31.1:4321", 60000)
+	//if Sunny.OpenDrive(true) {
+	//	Sunny.ProcessAddName("chatgpt.exe")
+	//}
 	//fmt.Println(Sunny.SetIEProxy())
 	err := Sunny.Error
 	if err != nil {
@@ -86,7 +91,14 @@ func Test() {
 	//阻止程序退出
 	select {}
 }
+func updateLog() {
+	//2025-07-16 修复 GET 请求，可能导致服务器出现响应501：https://c1-nuwa.lefile.cn/t_/cn_zh/version/css/aaa13d3c3f1d2708624c179cbba4e8bb.css
+	//2025-07-19 修复 WSS 可能异常断开
+	//2025-07-26 修复 开启强制TCP 无法访问脚本编辑
+	//2025-07-26 优化 脚本编辑
+}
 func HttpCallback(Conn SunnyNet.ConnHTTP) {
+	return
 	switch Conn.Type() {
 	case public.HttpSendRequest: //发起请求
 		fmt.Println("发起请求", Conn.Proto())
@@ -153,7 +165,7 @@ func TcpCallback(Conn SunnyNet.ConnTCP) {
 	}
 }
 func UdpCallback(Conn SunnyNet.ConnUDP) {
-
+	return
 	switch Conn.Type() {
 	case public.SunnyNetUDPTypeSend: //客户端向服务器端发送数据
 

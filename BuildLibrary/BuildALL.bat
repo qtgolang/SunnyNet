@@ -13,40 +13,40 @@ cd %tmpPath:~0,1%:
 for %%I in ("%tmpPath%..\") do set "parentPath=%%~fI"
 cd %parentPath%
 echo [Full]_Build_x86_DLL
-go build -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library\Full\windows\SunnyNet.dll"
+go build -trimpath -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library\Full\windows\SunnyNet.dll"
 echo [Mini]_Build_x86_DLL
-go build -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library\Mini\windows\SunnyNet.dll"
+go build -trimpath -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library\Mini\windows\SunnyNet.dll"
 
 
 set GOOS=windows
 set GOARCH=amd64
 echo [Full]_Build_x64_DLL
-go build -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library\Full\windows\SunnyNet64.dll"
+go build -trimpath -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library\Full\windows\SunnyNet64.dll"
 echo [Mini]_Build_x64_DLL
-go build -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library\Mini\windows\SunnyNet64.dll"
+go build -trimpath -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library\Mini\windows\SunnyNet64.dll"
 
 
 set GOOS=android
 set GOARCH=arm
 set CC=%NDK%\bin\armv7a-linux-androideabi21-clang
 echo [Full]_Build_Android_armeabi-v7a.so
-go build -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Full/Android/armeabi-v7a/libSunnyNet.so"
+go build -trimpath  -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Full/Android/armeabi-v7a/libSunnyNet.so"
 echo [Mini]_Build_Android_armeabi-v7a.so
-go build -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Mini/Android/armeabi-v7a/libSunnyNet.so"
+go build -trimpath  -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Mini/Android/armeabi-v7a/libSunnyNet.so"
 
 set GOOS=android
 set GOARCH=arm64
 set CC=%NDK%\bin\aarch64-linux-android21-clang
 echo [Full]_Build_Android_arm64-v8a.so
-go build -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Full/Android/arm64-v8a/libSunnyNet.so"
+go build -trimpath  -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Full/Android/arm64-v8a/libSunnyNet.so"
 echo [Mini]_Build_Android_arm64-v8a.so
-go build -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Mini/Android/arm64-v8a/libSunnyNet.so"
+go build -trimpath  -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Mini/Android/arm64-v8a/libSunnyNet.so"
 
 set GOOS=android
 set GOARCH=386
 set CC=%NDK%\bin\i686-linux-android16-clang
 echo [Full]_Build_Android_x86.so
-go build -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Full/Android/x86/libSunnyNet.so"
+go build -trimpath  -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Full/Android/x86/libSunnyNet.so"
 echo [Mini]_Build_Android_x86.so
-go build -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Mini/Android/x86/libSunnyNet.so"
+go build -trimpath  -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Mini/Android/x86/libSunnyNet.so"
 @echo on

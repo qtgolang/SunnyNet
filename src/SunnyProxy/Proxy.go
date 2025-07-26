@@ -42,6 +42,11 @@ func ParseProxy(u string, timeout ...int) (*Proxy, error) {
 	if Scheme == "socket" || Scheme == "sock" || Scheme == "socket5" || Scheme == "socks5" || Scheme == "socks" {
 		p.URL.Scheme = "socks5"
 	}
+	if p.Host == "null" {
+		p.Host = ""
+		p.URL = nil
+		return p, nil
+	}
 	if len(p.Host) < 3 {
 		return nil, invalidProxy
 	}

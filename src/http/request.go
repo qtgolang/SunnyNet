@@ -634,7 +634,7 @@ func (r *Request) GetIsNullBody() bool {
 			return false
 		}
 	}
-	return false
+	return r.ContentLength == 0 && len(r.TransferEncoding) == 0
 }
 
 // isH2Upgrade reports whether r represents the http2 "client preface"

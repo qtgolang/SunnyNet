@@ -10,6 +10,7 @@ import "C"
 
 func init() {
 	C.closeTcpConnectionInit()
+	R1()
 }
 
 // CloseCurrentSocket  关闭指定进程的所有TCP连接

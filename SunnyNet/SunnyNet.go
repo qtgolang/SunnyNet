@@ -545,22 +545,6 @@ func linkQuery(n string) string {
 	return linkMap[n]
 }
 
-// 请求是否环路
-func (s *proxyRequest) isLoop() bool {
-	_, port, _ := public.SplitHostPort(s.RwObj.RemoteAddr().String())
-	ok := CrossCompiled.IsLoopRequest(port, s.Global.port)
-	if ok {
-		link := linkQuery(s.Conn.RemoteAddr().String())
-		if link != "" {
-			p := CrossCompiled.LoopRemotePort(link)
-			if p < 1 {
-				return false
-			}
-		}
-	}
-	return ok
-}
-
 // 封装连接逻辑
 func dialTCP(proxyTools *SunnyProxy.Proxy, remoteAddr string, outRouterIP *net.TCPAddr) (net.Conn, error) {
 	return proxyTools.DialWithTimeout("tcp", remoteAddr, 2*time.Second, outRouterIP)
@@ -814,6 +798,48 @@ func (s *proxyRequest) transparentProcessing() {
 	}
 }
 
+// 请求是否环路
+func (s *proxyRequest) isLoop() bool {
+	_, port, _ := public.SplitHostPort(s.RwObj.RemoteAddr().String())
+	ok := CrossCompiled.IsLoopRequest(port, s.Global.port)
+	if ok {
+		link := linkQuery(s.Conn.RemoteAddr().String())
+		if link != "" {
+			p := CrossCompiled.LoopRemotePort(link)
+			if p < 1 {
+				return false
+			}
+		}
+	}
+	return ok
+}
+func (s *proxyRequest) targetIsInterfaceAdders() bool {
+	if int(s.Target.Port) != s.Global.port {
+		return false
+	}
+	if s.Target.Host == public.CertDownloadHost1 {
+		return true
+	}
+	if s.Target.Host == public.CertDownloadHost2 {
+		return true
+	}
+	adders, err := net.InterfaceAddrs()
+	if err != nil {
+		return false
+	}
+	for _, addr := range adders {
+		ipNet, _ := addr.(*net.IPNet)
+		if ipNet == nil {
+			continue
+		}
+		a := ipNet.IP.String()
+		if a == s.Target.Host || a == "["+s.Target.Host+"]" || s.Target.Host == "["+a+"]" {
+			return true
+		}
+	}
+	return false
+}
+
 // httpProcessing http请求处理过程
 func (s *proxyRequest) httpProcessing(aheadData []byte, Tag string) {
 	var hh []byte
@@ -895,10 +921,12 @@ func (s *proxyRequest) httpProcessing(aheadData []byte, Tag string) {
 					s.Target.Parse("", 80)
 				}
 			}
-			s.NoRepairHttp = true
-			s.RwObj = ReadWriteObject.NewReadWriteObject(newObjHook(s.RwObj, buff.Bytes()))
-			s.MustTcpProcessing(Tag)
-			return
+			if !(s.targetIsInterfaceAdders()) {
+				s.NoRepairHttp = true
+				s.RwObj = ReadWriteObject.NewReadWriteObject(newObjHook(s.RwObj, buff.Bytes()))
+				s.MustTcpProcessing(Tag)
+				return
+			}
 		}
 		if Tag == public.TagTcpSSLAgreement {
 			s.defaultScheme = "https"
@@ -919,7 +947,7 @@ func (s *proxyRequest) httpProcessing(aheadData []byte, Tag string) {
 
 func (s *proxyRequest) isCerDownloadPage(request *http.Request) bool {
 	i := int(s.Target.Port)
-	if (s.Target.Host == "localhost" && i == s.Global.port) || (s.Target.Host == "127.0.0.1" && i == s.Global.port) || (s.Target.Host == public.CertDownloadHost2) || (s.Target.Host == public.CertDownloadHost1) || s.isLoop() {
+	if i == s.Global.port && (s.targetIsInterfaceAdders() || s.isLoop()) {
 		if request != nil {
 			if request.Header != nil {
 				if request.Header.Get(public.HTTPClientTags) == "true" {
@@ -959,6 +987,9 @@ func (s *proxyRequest) isCerDownloadPage(request *http.Request) bool {
 						}
 						if strings.HasSuffix(_FileType, ".js") {
 							_, _ = s.RwObj.WriteString(fmt.Sprintf("%d\r\nContent-Type:  application/x-javascript\r\n\r\n", len(data)))
+						}
+						if strings.HasSuffix(_FileType, ".wasm") {
+							_, _ = s.RwObj.WriteString(fmt.Sprintf("%d\r\nContent-Type:  application/wasm\r\n\r\n", len(data)))
 						}
 						if strings.HasSuffix(_FileType, ".ttf") {
 							_, _ = s.RwObj.WriteString(fmt.Sprintf("%d\r\nContent-Type:  application/application/x-font-ttf\r\n\r\n", len(data)))
@@ -1090,7 +1121,7 @@ func (s *proxyRequest) https() {
 		}
 	}
 	//是否开启了强制走TCP  And 如果是DNS请求则不用判断了，直接强制走TCP
-	if s.Global.isMustTcp || s.Target.Port == 853 {
+	if (s.Global.isMustTcp || s.Target.Port == 853) && !s.targetIsInterfaceAdders() {
 		if s.Global.disableTCP {
 			return
 		}
@@ -1128,41 +1159,45 @@ func (s *proxyRequest) https() {
 		//得到握手信息后 恢复30秒的读写超时
 		_ = tlsConn.SetDeadline(time.Now().Add(30 * time.Second))
 		if err == nil {
-			res, cert := ClientIsHttps(s.Target.String())
-			if res == whoisUndefined {
-				res, cert = ClientRequestIsHttps(s.Global, s.Target.String(), serverName)
-			}
-			if res == whoisNoHTTPS {
-				_ = s.RwObj.Close()
-				return
-			} else if res == whoisUndefined {
-				s.rawTarget = public.SumHashCode(s.Target.String())
-			}
-			if res == whoisHTTPS1 {
-				tlsConfig.NextProtos = public.HTTP1NextProtos
-			} else { //res == whoisHTTPS2
-				tlsConfig.NextProtos = public.HTTP2NextProtos
-			}
-			name := ""
-			if serverName != "" {
-				name = fmt.Sprintf("%s:%d", serverName, s.Target.Port)
-			}
 			var certificate *tls.Certificate
 			var DNSNames []string
-			if s.isLoop() {
-				certificate, DNSNames, _ = WhoisLoopCache(s.Global, cert, host, s.Global.rootCa, s.Global.rootKey)
-			} else {
-				certificate, DNSNames, _ = WhoisCache(s.Global, cert, name, host, s.Global.rootCa, s.Global.rootKey)
-			}
-			isRules := s.Global.tcpRules(serverName, s.Target.Host, DNSNames...)
-			if isRules {
-				if s.Global.disableTCP {
+			if !s.targetIsInterfaceAdders() {
+				res, cert := ClientIsHttps(s.Target.String())
+				if res == whoisUndefined {
+					res, cert = ClientRequestIsHttps(s.Global, s.Target.String(), serverName)
+				}
+				if res == whoisNoHTTPS {
+					_ = s.RwObj.Close()
+					return
+				} else if res == whoisUndefined {
+					s.rawTarget = public.SumHashCode(s.Target.String())
+				}
+				if res == whoisHTTPS1 {
+					tlsConfig.NextProtos = public.HTTP1NextProtos
+				} else { //res == whoisHTTPS2
+					tlsConfig.NextProtos = public.HTTP2NextProtos
+				}
+				name := ""
+				if serverName != "" {
+					name = fmt.Sprintf("%s:%d", serverName, s.Target.Port)
+				}
+				if s.isLoop() {
+					certificate, DNSNames, _ = WhoisLoopCache(s.Global, cert, host, s.Global.rootCa, s.Global.rootKey)
+				} else {
+					certificate, DNSNames, _ = WhoisCache(s.Global, cert, name, host, s.Global.rootCa, s.Global.rootKey)
+				}
+				isRules := s.Global.tcpRules(serverName, s.Target.Host, DNSNames...)
+				if isRules {
+					if s.Global.disableTCP {
+						return
+					}
+					s.NoRepairHttp = true
+					s.RwObj = ReadWriteObject.NewReadWriteObject(newObjHook(s.RwObj, hook.Bytes()))
+					s.MustTcpProcessing(public.TagMustTCP)
 					return
 				}
-				s.NoRepairHttp = true
-				s.RwObj = ReadWriteObject.NewReadWriteObject(newObjHook(s.RwObj, hook.Bytes()))
-				s.MustTcpProcessing(public.TagMustTCP)
-				return
+			} else {
+				certificate, DNSNames, _ = WhoisLoopCache(s.Global, nil, host, s.Global.rootCa, s.Global.rootKey)
 			}
 			ServerName := s.Target.String()
 			for _, v := range DNSNames {
@@ -2852,7 +2887,7 @@ func (s *Sunny) handleClientConn(conn net.Conn) {
 		if req.Socks5ProxyVerification() == false {
 			return
 		}
-		if s.isMustTcp {
+		if s.isMustTcp && !req.targetIsInterfaceAdders() {
 			if s.disableTCP {
 				return
 			}

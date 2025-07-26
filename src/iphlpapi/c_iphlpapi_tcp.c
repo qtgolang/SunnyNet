@@ -171,6 +171,16 @@ void closeTcpConnectionByPid( DWORD pid, DWORD ulAf )
 						{
 							continue;
 						}
+						//之所以排除掉 msedgewebview2.exe 因为如果使用 webview2 框架开发的程序 可能需要用到网络连接 ,如果这里不排除会导致程序崩溃
+						if ( strcmp( name, "msedgewebview2.exe" ) == 0 )
+						{
+							continue;
+						}
+						//排除掉 自己进程
+						if ( tcpRow->dwOwningPid == GetCurrentProcessId() )
+						{
+							continue;
+						}
 					}
 					/* 关闭指定的 TCP 连接 */
 					MIB_TCPROW tcpRow2;

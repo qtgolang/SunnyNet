@@ -282,7 +282,7 @@ func (s *proxyRequest) noCallback(n ...string) bool {
 		return false
 	}
 	if len(n) > 0 {
-		if n[0] == "127.0.0.1:9229" || n[0] == "[::1]:9229" {
+		if n[0] == "127.0.0.1:9229" || n[0] == "[127.0.0.1]:9229" || n[0] == "[::1]:9229" {
 			//疑似Chrome 开发人员工具正在使用专用的DevTools 即使所有选项卡都关闭，除了空白的新选项卡，它仍可能继续发送
 			//https://superuser.com/questions/1419223/google-chrome-developer-tools-start-knocking-to-127-0-0-1-and-1-ip-on-9229-por
 			return true
@@ -290,14 +290,14 @@ func (s *proxyRequest) noCallback(n ...string) bool {
 	}
 	request := s.Request
 	Port := int(s.Target.Port)
-	if (s.Target.Host == "localhost" || s.Target.Host == "127.0.0.1" || s.Target.Host == "::1") && Port == 9229 {
+	if (s.Target.Host == "localhost" || s.Target.Host == "127.0.0.1" || s.Target.Host == "::1" || s.Target.Host == "[localhost]" || s.Target.Host == "[127.0.0.1]" || s.Target.Host == "[::1]") && Port == 9229 {
 		//疑似Chrome 开发人员工具正在使用专用的DevTools 即使所有选项卡都关闭，除了空白的新选项卡，它仍可能继续发送
 		//https://superuser.com/questions/1419223/google-chrome-developer-tools-start-knocking-to-127-0-0-1-and-1-ip-on-9229-por
 		return true
 	}
 
 	//下面判断是否为证书安装页面 或 脚本编辑页面  如果是 则不触发回调页面
-	if (s.Target.Host == "localhost" && Port == s.Global.port) || (s.Target.Host == "127.0.0.1" && Port == s.Global.port) || (s.Target.Host == "::1" && Port == s.Global.port) || (s.Target.Host == public.CertDownloadHost2) || (s.Target.Host == public.CertDownloadHost1) {
+	if (s.Target.Host == "localhost" && Port == s.Global.port) || (s.Target.Host == "127.0.0.1" && Port == s.Global.port || s.Target.Host == "[localhost]" || s.Target.Host == "[127.0.0.1]" || s.Target.Host == "[::1]") || (s.Target.Host == "::1" && Port == s.Global.port) || (s.Target.Host == "[::1]" && Port == s.Global.port) || (s.Target.Host == public.CertDownloadHost2) || (s.Target.Host == public.CertDownloadHost1) {
 		if request != nil {
 			if request.URL != nil {
 				ScriptPage := "/" + s.Global.script.AdminPage

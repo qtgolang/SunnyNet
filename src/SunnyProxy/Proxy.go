@@ -222,6 +222,16 @@ func (p *Proxy) Dial(network, addr string, OutRouterIP *net.TCPAddr) (net.Conn, 
 	if s != "HTTP/1.1 200" && s != "HTTP/1.0 200" {
 		return nil, fmt.Errorf(string(b))
 	}
+	b = make([]byte, 128)
+	var ms error
+	for {
+		_ = conn.SetDeadline(time.Now().Add(100 * time.Millisecond))
+		n, ms = conn.Read(b)
+		if ms != nil {
+			break
+		}
+	}
+	_ = conn.SetDeadline(time.Time{})
 	return conn, er
 }
 

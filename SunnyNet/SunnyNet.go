@@ -550,6 +550,12 @@ func dialTCP(proxyTools *SunnyProxy.Proxy, remoteAddr string, outRouterIP *net.T
 	return proxyTools.DialWithTimeout("tcp", remoteAddr, 2*time.Second, outRouterIP)
 }
 func connectToTarget(s *proxyRequest, proxyTools *SunnyProxy.Proxy, outRouterIP *net.TCPAddr) (net.Conn, string) {
+	if dns.IsRemoteDnsServer() {
+		conn, _ := proxyTools.Dial("tcp", s.Target.String(), outRouterIP)
+		fmt.Println(conn.LocalAddr().String())
+
+		return conn, s.Target.String()
+	}
 	ip := net.ParseIP(s.Target.Host)
 	if ip != nil {
 		remoteAddr := SunnyProxy.FormatIP(ip, fmt.Sprintf("%d", s.Target.Port))
@@ -2203,6 +2209,7 @@ type Sunny struct {
 	isRandomTLS           bool   //是否随机使用TLS指纹
 	userScriptCode        []byte //用户脚本代码
 	_http_max_body_len    int64  //最大的用户提交数据长度
+	connHijack            func(Hijack) bool
 	script                struct {
 		http         GoScriptCode.GoScriptTypeHTTP  //脚本代码	HTTP		事件入口函数
 		tcp          GoScriptCode.GoScriptTypeTCP   //脚本代码	TCP			事件入口函数
@@ -2867,6 +2874,11 @@ func (s *Sunny) handleClientConn(conn net.Conn) {
 		//如果是 通过 NFapi 驱动进来的数据 对连接信息进行赋值
 		req.Pid = info.GetPid()
 		req.Target.Parse(info.GetRemoteAddress(), info.GetRemotePort(), info.IsV6())
+		if s.connHijack != nil {
+			if s.connHijack(&_hijack{req}) {
+				return
+			}
+		}
 		//然后进行数据处理,按照HTTPS数据进行处理
 		req.https()
 		info.Close()
@@ -2887,6 +2899,11 @@ func (s *Sunny) handleClientConn(conn net.Conn) {
 		if req.Socks5ProxyVerification() == false {
 			return
 		}
+		if s.connHijack != nil {
+			if s.connHijack(&_hijack{req}) {
+				return
+			}
+		}
 		if s.isMustTcp && !req.targetIsInterfaceAdders() {
 			if s.disableTCP {
 				return
@@ -2898,6 +2915,11 @@ func (s *Sunny) handleClientConn(conn net.Conn) {
 		//如果没有开启强制走TCP，则按https 数据进行处理
 		req.https()
 		return
+	}
+	if s.connHijack != nil {
+		if s.connHijack(&_hijack{req}) {
+			return
+		}
 	}
 	//如果没有开启用户身份验证 且 第一个字节是 22 或 23 说明可能是透明代理
 	if s.socket5VerifyUser == false && (peek[0] == 22 || peek[0] == 23) {
@@ -2913,4 +2935,51 @@ func (s *Sunny) handleClientConn(conn net.Conn) {
 }
 func (s *Sunny) SetDnsServer(server string) {
 	dns.SetDnsServer(server)
+}
+
+// SetHijack 设置劫持函数 函数返回一个bool 如果返回true 表示，此连接过程已由您自行处理SunnyNet不再处理该连接
+func (s *Sunny) SetHijack(fn func(hijack Hijack) bool) {
+	s.lock.Lock()
+	s.connHijack = fn
+	s.lock.Unlock()
+}
+
+type Hijack interface {
+	Conn() net.Conn     //劫持的会话
+	Pid() int           //如果是远程连接PID=0
+	Username() string   //如果是socks连接并且传递了账号密码
+	RemoteAddr() string //远端地址 以这个为准 Conn的RemoteAddr可能不准确
+	LocalAddr() string  //来源地址 和 Conn 的 LocalAddr 一致
+}
+type _hijack struct {
+	*proxyRequest
+}
+
+// Pid 如果是远程连接PID=0
+func (t *_hijack) Pid() int {
+	o, _ := strconv.Atoi(t.proxyRequest.Pid)
+	return o
+}
+
+// Conn 劫持的会话
+func (t *_hijack) Conn() net.Conn {
+	return t.RwObj
+}
+
+// Username 如果是socks连接并且传递了账号密码
+func (t *_hijack) Username() string {
+	return t.proxyRequest._SocksUser
+}
+
+// RemoteAddr 远端地址 以这个为准 Conn的RemoteAddr可能不准确
+func (t *_hijack) RemoteAddr() string {
+	if t.Target == nil {
+		return t.RwObj.RemoteAddr().String()
+	}
+	return t.Target.String()
+}
+
+// LocalAddr 来源地址 和 Conn 的 LocalAddr 一致
+func (t *_hijack) LocalAddr() string {
+	return t.RwObj.LocalAddr().String()
 }

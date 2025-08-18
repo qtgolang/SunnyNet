@@ -60,8 +60,9 @@ func newResolver(proxy string, outRouterIP *net.TCPAddr, Dial func(network, addr
 				if err != nil {
 					return nil, err
 				}
+
 				_ = conn.(*net.TCPConn).SetKeepAlive(true)
-				_ = conn.(*net.TCPConn).SetKeepAlivePeriod(10 * time.Second)
+				_ = conn.(*net.TCPConn).SetKeepAlivePeriod(30 * time.Second)
 				return tls.Client(conn, dnsConfig), nil
 			}
 
@@ -104,10 +105,20 @@ type rsIps struct {
 
 func SetDnsServer(server string) {
 	dnsLock.Lock()
-	dnsServer = server
+	if server == "local" {
+		dnsServer = "localhost"
+	} else {
+		dnsServer = server
+	}
 	dnsList = make(map[string]*rsIps)
 	dnsTools = make(map[string]*tools)
 	dnsLock.Unlock()
+}
+func IsRemoteDnsServer() bool {
+	dnsLock.Lock()
+	ok := strings.ToLower(dnsServer) == "remote"
+	dnsLock.Unlock()
+	return ok
 }
 func GetDnsServer() string {
 	return dnsServer
@@ -213,6 +224,7 @@ func lookupIP(host string, proxy string, outRouterIP *net.TCPAddr, Dial func(net
 	resolver.time = time.Now()
 	dnsLock.Unlock()
 	_ips_, _err := resolver.rs.LookupIP(context.Background(), Net, host)
+	fmt.Println("ips", _ips_, Net)
 	_ips := deepCopyIPs(_ips_)
 	if len(_ips) > 0 {
 		t := &rsIps{ips: _ips, time: time.Now()}

@@ -2,6 +2,7 @@ package SunnyNet
 
 import (
 	"context"
+	"fmt"
 	"github.com/qtgolang/SunnyNet/src/ReadWriteObject"
 	"github.com/qtgolang/SunnyNet/src/http"
 	"github.com/qtgolang/SunnyNet/src/public"
@@ -11,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -75,6 +77,42 @@ func (s *proxyRequest) httpCall(rw http.ResponseWriter, req *http.Request) {
 	res.SetContext(public.SunnyNetRawRequestBodyLength, Length)
 	res.IsRawBody = IsRequestRawBody
 	{
+		{
+			if strings.Contains(res.Host, "[") && strings.Contains(res.Host, ".") {
+				host, port, _ := net.SplitHostPort(res.Host)
+				if host != "" {
+					if port != "" {
+						res.Host = fmt.Sprintf("%s:%s", host, port)
+					} else {
+						res.Host = host
+					}
+				}
+			}
+			if res.URL != nil {
+				if strings.Contains(res.URL.Host, "[") && strings.Contains(res.URL.Host, ".") {
+					host, port, _ := net.SplitHostPort(res.URL.Host)
+					if host != "" {
+						if port != "" {
+							res.URL.Host = fmt.Sprintf("%s:%s", host, port)
+						} else {
+							res.URL.Host = host
+						}
+					}
+				}
+			}
+			m := req.Header.Get("host")
+			if strings.Contains(m, "[") && strings.Contains(m, ".") {
+				host, port, _ := net.SplitHostPort(m)
+				if host != "" {
+					if port != "" {
+						m = fmt.Sprintf("%s:%s", host, port)
+					} else {
+						m = host
+					}
+					req.Header.Del(m)
+				}
+			}
+		}
 		res.RequestURI = ""
 		if res.URL != nil {
 			if r.defaultScheme == "" || req.URL.Scheme == "https" {
@@ -105,7 +143,16 @@ func (s *proxyRequest) httpCall(rw http.ResponseWriter, req *http.Request) {
 					res.URL.Host = res.Host
 				}
 			}
-
+			if strings.Contains(res.Host, "[") && strings.Contains(res.Host, ".") {
+				host, port, _ := net.SplitHostPort(res.Host)
+				if host != "" {
+					if port != "" {
+						res.Host = fmt.Sprintf("%s:%s", host, port)
+					} else {
+						res.Host = host
+					}
+				}
+			}
 			if res.Host == "" && req.Header.Get("host") != "" {
 				res.URL.Host = req.Header.Get("host")
 				u, _ := url.Parse(res.URL.String())

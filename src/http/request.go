@@ -356,7 +356,6 @@ func (r *Request) SetData(data []byte) {
 		return
 	}
 	if r.Body != nil {
-		_, _ = io.ReadAll(r.Body)
 		_ = r.Body.Close()
 	}
 	r.ContentLength = int64(len(data))
@@ -374,11 +373,7 @@ func (r *Request) GetData() []byte {
 	if r.Body != nil {
 		buf, _ := io.ReadAll(r.Body)
 		_ = r.Body.Close()
-		if len(buf) > 0 {
-			r.ContentLength = -1
-		} else {
-			r.ContentLength = 0
-		}
+		r.ContentLength = int64(len(buf))
 		r.Header.Set("Content-Length", fmt.Sprintf("%d", len(buf)))
 		r.Body = io.NopCloser(bytes.NewBuffer(buf))
 		return buf
@@ -440,7 +435,8 @@ func (r *Request) SetHTTP2Config(config *H2Config) {
 	r.SetContext(h2ConfigKey, config)
 }
 func (r *Request) IsSetHTTP2Config() bool {
-	return r.Context().Value(h2ConfigKey) != nil
+	rv := r.Context().Value(h2ConfigKey)
+	return rv != nil
 }
 
 // WithContext returns a shallow copy of r with its context changed

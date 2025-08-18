@@ -226,7 +226,7 @@ func HTTPSendBin(Context int, data []byte) {
 	resp, _, _, f := httpClient.Do(k.req, k.proxy, k.redirect, k.tlsConfig, time.Duration(k.outTime)*time.Millisecond, random, nil)
 
 	defer func() {
-		if f != nil {
+		if f != nil && resp != nil {
 			f()
 		}
 	}()

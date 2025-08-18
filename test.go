@@ -3,13 +3,28 @@ package main
 import "C"
 import (
 	"fmt"
+	"github.com/qtgolang/SunnyNet/Api"
 	"github.com/qtgolang/SunnyNet/SunnyNet"
 	"github.com/qtgolang/SunnyNet/src/encoding/hex"
 	"github.com/qtgolang/SunnyNet/src/public"
 	"log"
+	"os"
 )
 
+func wss() {
+	defer os.Exit(0)
+	id := Api.CreateWebsocket()
+	aa := Api.WebsocketDial(id, "https://dsc-yunxin.hwwt8.com/socket.io/1/websocket/8480ab7b-b985-4115-ae86-595f8d7a7982", "", 0, nil, true, "https://:@60.184.194.92:22535", 0, 5000, "")
+	fmt.Println(aa)
+	fmt.Println(Api.WebsocketGetErr(id))
+	fmt.Println("==========================================================")
+	Api.WebsocketClose(id)
+	aa = Api.WebsocketDial(id, "https://dsc-yunxin.hwwt8.com/socket.io/1/websocket/8480ab7b-b985-4115-ae86-595f8d7a7982", "", 0, nil, true, "https://:@60.184.194.92:22535", 0, 5000, "")
+	fmt.Println(aa)
+	fmt.Println(Api.WebsocketGetErr(id))
+}
 func Test() {
+	//wss()
 	var Sunny = SunnyNet.NewSunny()
 	/*
 		//载入自定义证书
@@ -68,17 +83,38 @@ func Test() {
 		Sunny.ProcessCancelAll()			//删除已添加的所有进程名称/PID
 		Sunny.ProcessALLName(true, false)	//捕获全部进程开始后，添加进程名称-PID无效
 	*/
+	/*
+			DNS使用的3种模式
+			当你设置了全局上游代理，或对请求单独设置了代理的情况下，使用DNS模式，视情况而定,来选择设置
+			情况1.你没有使用全局上游代理，也没有对请求单独设置代理,这种情况下，没什么好说的，无论你设置的是那种模式，都只会使用本机的DNS进行解析!
+			情况2.你使用了全局上游代理或请求单独设置代理,这种情况下，你设置以下3种模式会有区别
+		         1.使用     本地解析    模式，你要访问的目标地址，通过你本地DNS解析出的IP，可能会被服务器拒绝连接。这时候你需要尝试 远程解析/远程服务器解析
+				 2.使用     远程解析    模式，你所使用的代理服务器可能存在无法解析的情况。这时你应该尝试 远程服务器解析
+				 2.使用  远程服务器解析  模式，远程服务器解析 会使用你设置的代理，连接到远程DNS服务器进行查询并且解析，可能会导致首次访问变慢
+
+					Sunny.SetDnsServer("local")				//本地解析
+
+					Sunny.SetDnsServer("remote")			//远程解析
+
+					Sunny.SetDnsServer("223.5.5.5:853")		//远程服务器解析
+	*/
+	//
+	//
+	//===========================================================================================================================================
+	//
+	//
 	//Sunny.SetMustTcpRegexp("124.221.161.122", true)
 	//
 	//Sunny.SetOutRouterIP("192.168.31.154")
 	//Sunny.SetMustTcpRegexp("shopr-cnlive.mcoc-cdn.cn", false)
-
+	//Sunny.SetGlobalProxy("socks://192.168.31.1:4321", 30000)
 	//设置回调地址
 	Sunny.SetGoCallback(HttpCallback, TcpCallback, WSCallback, UdpCallback)
 	Port := 2025
 	Sunny.SetPort(Port).Start()
 	//Sunny.MustTcp(true)
-	//Sunny.SetGlobalProxy("socket://192.168.31.1:4321", 60000)
+	//Sunny.SetDnsServer("223.5.5.5:853")
+	//Sunny.SetGlobalProxy("http://abc9068377_mdse-zone-abc:11223344@b062e1016fa4e9c4.abcproxy.vip:4950", 60000)
 	//if Sunny.OpenDrive(true) {
 	//	Sunny.ProcessAddName("chatgpt.exe")
 	//}
@@ -98,7 +134,7 @@ func updateLog() {
 	//2025-07-26 优化 脚本编辑
 }
 func HttpCallback(Conn SunnyNet.ConnHTTP) {
-	return
+
 	switch Conn.Type() {
 	case public.HttpSendRequest: //发起请求
 		fmt.Println("发起请求", Conn.Proto())

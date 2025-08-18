@@ -113,35 +113,33 @@ func ClientRequestIsHttps(Sunny *Sunny, targetAddr string, serverName string) (r
 			whoisLock.Unlock()
 		}
 	}()
-	proxyHost, proxyPort, e := net.SplitHostPort(targetAddr)
-	var ips []net.IP
-	var first net.IP
-	if e != nil {
-		return whoisUndefined, nil
-	}
 	var conn net.Conn
-	ip := net.ParseIP(proxyHost)
-	if ip == nil {
-		first = dns.GetFirstIP(proxyHost, "")
-		if first != nil {
-			conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(first, proxyPort), time.Second*3, Sunny.outRouterIP)
+	if dns.IsRemoteDnsServer() {
+		conn, _ = Sunny.proxy.DialWithTimeout("tcp", targetAddr, 2*time.Second, Sunny.outRouterIP)
+	} else {
+		proxyHost, proxyPort, e := net.SplitHostPort(targetAddr)
+		var ips []net.IP
+		var first net.IP
+		if e != nil {
+			return whoisUndefined, nil
 		}
-		if conn == nil {
-			ips, _ = dns.LookupIP(proxyHost, "", Sunny.outRouterIP, nil)
-			//优先尝试IPV4
-			for _, _ip := range ips {
-				if _ip2 := _ip.To4(); _ip2 != nil {
-					conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(_ip, proxyPort), 2*time.Second, Sunny.outRouterIP)
-					if conn != nil {
-						dns.SetFirstIP(proxyHost, "", _ip)
-						break
-					}
-				}
+		ip := net.ParseIP(proxyHost)
+		if ip == nil {
+			first = dns.GetFirstIP(proxyHost, "")
+			if first != nil {
+				conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(first, proxyPort), time.Second*3, Sunny.outRouterIP)
 			}
-			//最后尝试IPV6
 			if conn == nil {
+				var ProxyHost string
+				var dial func(network string, addr string, outRouterIP *net.TCPAddr) (net.Conn, error)
+				if Sunny.proxy != nil {
+					ProxyHost = Sunny.proxy.Host
+					dial = Sunny.proxy.Dial
+				}
+				ips, _ = dns.LookupIP(proxyHost, ProxyHost, Sunny.outRouterIP, dial)
+				//优先尝试IPV4
 				for _, _ip := range ips {
-					if _ip2 := _ip.To16(); _ip2 != nil {
+					if _ip2 := _ip.To4(); _ip2 != nil {
 						conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(_ip, proxyPort), 2*time.Second, Sunny.outRouterIP)
 						if conn != nil {
 							dns.SetFirstIP(proxyHost, "", _ip)
@@ -149,10 +147,23 @@ func ClientRequestIsHttps(Sunny *Sunny, targetAddr string, serverName string) (r
 						}
 					}
 				}
+				//最后尝试IPV6
+				if conn == nil {
+					for _, _ip := range ips {
+						if _ip2 := _ip.To16(); _ip2 != nil {
+							conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(_ip, proxyPort), 2*time.Second, Sunny.outRouterIP)
+							if conn != nil {
+								dns.SetFirstIP(proxyHost, "", _ip)
+								break
+							}
+						}
+					}
+				}
 			}
+
+		} else {
+			conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(ip, proxyPort), time.Second*3, Sunny.outRouterIP)
 		}
-	} else {
-		conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(ip, proxyPort), time.Second*3, Sunny.outRouterIP)
 	}
 	if conn == nil {
 		return whoisUndefined, nil

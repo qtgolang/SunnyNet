@@ -186,7 +186,12 @@ func do(req *http.Request, RequestProxy *SunnyProxy.Proxy, CheckRedirect bool, c
 	} else {
 		req.SetContext(public.SunnyNetServerIpTags, SunnyProxy.FormatIP(ip, proxy))
 	}
-	return reqs, rConn, err, func() { httpClientPop(client) }
+	return reqs, rConn, err, func() {
+		if err != nil {
+			return
+		}
+		httpClientPop(client)
+	}
 }
 
 var httpCancel = errors.New("客户端取消请求")
@@ -352,6 +357,10 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 					}
 				}
 			}
+		}
+		if dns.IsRemoteDnsServer() {
+			conn, er := res.RequestProxy.DialWithTimeout(network, addr, 3*time.Second, res.outRouterIP)
+			return conn, er
 		}
 		address, port, err := net.SplitHostPort(addr)
 		if err != nil {

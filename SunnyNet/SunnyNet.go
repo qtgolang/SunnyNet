@@ -552,8 +552,6 @@ func dialTCP(proxyTools *SunnyProxy.Proxy, remoteAddr string, outRouterIP *net.T
 func connectToTarget(s *proxyRequest, proxyTools *SunnyProxy.Proxy, outRouterIP *net.TCPAddr) (net.Conn, string) {
 	if dns.IsRemoteDnsServer() {
 		conn, _ := proxyTools.Dial("tcp", s.Target.String(), outRouterIP)
-		fmt.Println(conn.LocalAddr().String())
-
 		return conn, s.Target.String()
 	}
 	ip := net.ParseIP(s.Target.Host)
@@ -1807,7 +1805,6 @@ func (s *proxyRequest) CompleteRequest(req *http.Request) {
 	}
 	//验证处理是否websocket请求,如果是直接处理
 	if s.handleWss() {
-
 		return
 	}
 	//为了保证在请求完成时,还能获取到到请求的提交信息,先备份数据

@@ -6,6 +6,11 @@ package WinDivert
 // #cgo CFLAGS: -I${SRCDIR}/divert -Wno-incompatible-pointer-types
 // #include "windivert.h"
 import "C"
+import "github.com/qtgolang/SunnyNet/src/ProcessDrv/tun/WinDivert/divert"
+
+func init() {
+	divert.Init()
+}
 
 const (
 	LayerNetwork        = Layer(C.WINDIVERT_LAYER_NETWORK)

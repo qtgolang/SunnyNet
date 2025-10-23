@@ -30,7 +30,7 @@ const Information = `
 		 SunnyNet QQ交流群(一群)：751406884
          SunnyNet QQ交流群(二群)：545120699
          SunnyNet QQ交流群(三群)：170902713
-         SunnyNet QQ交流群(四群)：616787804
+         SunnyNet QQ交流群(四群)：1070797457
        QQ频道：https://pd.qq.com/g/SunnyNetV5
 ------------------------------------------------------
 

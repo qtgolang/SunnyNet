@@ -1,17 +1,62 @@
 package CrossCompiled
 
 import (
+	"github.com/qtgolang/SunnyNet/src/ProcessDrv/tun"
+	Tun2 "github.com/qtgolang/SunnyNet/src/ProcessDrv/tun/Tun"
 	"github.com/qtgolang/SunnyNet/src/iphlpapi/net"
 	"github.com/shirou/gopsutil/process"
 	"os"
 	"strconv"
 )
 
-const DrvUndefined = 0
-const DrvNF = 1
-const DrvPr = 2
+type NFAPI struct {
+	TCP   Tun2.TcpFunc
+	UDP   Tun2.UdpFunc
+	Sunny Tun2.Interface
+}
+type Pr struct {
+	TCP   Tun2.TcpFunc
+	UDP   Tun2.UdpFunc
+	Sunny Tun2.Interface
+}
+type Tun struct {
+	TCP   Tun2.TcpFunc
+	UDP   Tun2.UdpFunc
+	Sunny Tun2.Interface
+}
 
-var DrvInitState = 0
+func (t Tun) Install() bool {
+	return tun.Install()
+}
+
+func (t Tun) IsRun() bool {
+	return tun.IsRun()
+}
+
+func (t Tun) SetHandle() bool {
+	tun.SetHandle(t.TCP, t.UDP, t.Sunny)
+	return true
+}
+
+func (t Tun) Run() bool {
+	return tun.Run()
+}
+
+func (t Tun) Close() bool {
+	return tun.Close()
+}
+
+func (t Tun) Name() string {
+	return tun.Name()
+}
+
+func (t Tun) UnInstall() bool {
+	return tun.UnInstall()
+}
+
+const DrvPr = 0
+const DrvNF = 1
+const DrvTun = 2
 
 // GetTcpInfoPID 用于获取指定 TCP 连接信息的 PID
 func GetTcpInfoPID(tcpInfo string, SunnyPort int) string {

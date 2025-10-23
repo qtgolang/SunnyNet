@@ -17,6 +17,8 @@ import (
 	_ "github.com/qtgolang/SunnyNet/src/http/pprof"
 	"github.com/qtgolang/SunnyNet/src/protobuf"
 	"github.com/qtgolang/SunnyNet/src/public"
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 	"reflect"
 	"strconv"
 	"strings"
@@ -171,6 +173,28 @@ func init() {
 	Symbols["github.com/qtgolang/SunnyNet/src/RSA/RSA"] = map[string]reflect.Value{
 		"PubKeyIO": reflect.ValueOf(RSA.PubKeyIO),
 	}
+	Symbols["github.com/tidwall/sjson/sjson"] = map[string]reflect.Value{
+		"Set":                reflect.ValueOf(sjson.Set),
+		"SetRaw":             reflect.ValueOf(sjson.SetRaw),
+		"SetBytes":           reflect.ValueOf(sjson.SetBytes),
+		"SetOptions":         reflect.ValueOf(sjson.SetOptions),
+		"SetRawBytes":        reflect.ValueOf(sjson.SetRawBytes),
+		"SetRawOptions":      reflect.ValueOf(sjson.SetRawOptions),
+		"SetRawBytesOptions": reflect.ValueOf(sjson.SetRawBytesOptions),
+		"Options":            reflect.ValueOf((*sjson.Options)(nil)),
+	}
+	Symbols["github.com/tidwall/gjson/gjson"] = map[string]reflect.Value{
+		"Parse":            reflect.ValueOf(gjson.Parse),
+		"Valid":            reflect.ValueOf(gjson.Valid),
+		"ParseBytes":       reflect.ValueOf(gjson.ParseBytes),
+		"ValidBytes":       reflect.ValueOf(gjson.ValidBytes),
+		"Get":              reflect.ValueOf(gjson.Get),
+		"GetMany":          reflect.ValueOf(gjson.GetMany),
+		"GetManyBytes":     reflect.ValueOf(gjson.GetManyBytes),
+		"GetBytes":         reflect.ValueOf(gjson.GetBytes),
+		"AppendJSONString": reflect.ValueOf(gjson.AppendJSONString),
+		"Result":           reflect.ValueOf((*gjson.Result)(nil)),
+	}
 	Symbols["reflect/reflect"] = map[string]reflect.Value{
 		"TypeOf": reflect.ValueOf(reflect.TypeOf),
 		"Func":   reflect.ValueOf(reflect.Func),
@@ -197,7 +221,7 @@ func RunCode(SunnyNetContext int, UserScriptCode []byte, log LogFuncInterface) (
 		}
 	}()
 	var iEval = interp.New(interp.Options{})
-	iEval.Use(Symbols)
+	_ = iEval.Use(Symbols)
 	ca := ""
 	if len(UserScriptCode) < 100 {
 		ca = string(DefaultCode) + string(GoFunc)

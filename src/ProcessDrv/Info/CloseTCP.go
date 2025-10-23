@@ -4,6 +4,7 @@
 package Info
 
 import (
+	"github.com/qtgolang/SunnyNet/src/ProcessDrv/ProcessCheck"
 	"github.com/qtgolang/SunnyNet/src/iphlpapi"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"os/exec"
@@ -21,6 +22,10 @@ const (
 func ClosePidTCP(PID int) {
 	iphlpapi.CloseCurrentSocket(PID, AF_INET)
 	iphlpapi.CloseCurrentSocket(PID, AF_INET6)
+}
+func init() {
+	ProcessCheck.ClosePidTCP = ClosePidTCP
+	ProcessCheck.CloseNameTCP = CloseNameTCP
 }
 
 // CloseNameTCP 关闭指定进程的所有TCP连接

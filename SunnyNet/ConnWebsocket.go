@@ -21,89 +21,98 @@ type wsConn struct {
 	Request       *http.Request //请求体
 	_Display      bool
 	_localAddress string
+	_note         string
 }
 
-func (k *wsConn) LocalAddress() string {
-	return k._localAddress
+func (w *wsConn) SetNote(s string) {
+	w._note = s
 }
 
-func (k *wsConn) SetDisplay(Display bool) {
-	k._Display = Display
+func (w *wsConn) GetNote() string {
+	return w._note
 }
 
-func (k *wsConn) Method() string {
-	return k._Method
+func (w *wsConn) LocalAddress() string {
+	return w._localAddress
 }
 
-func (k *wsConn) GetSocket5User() string {
-	return GetSocket5User(k._Theology)
+func (w *wsConn) SetDisplay(Display bool) {
+	w._Display = Display
 }
 
-func (k *wsConn) GetProcessName() string {
-	if k.Pid == 0 {
+func (w *wsConn) Method() string {
+	return w._Method
+}
+
+func (w *wsConn) GetSocket5User() string {
+	return GetSocket5User(w._Theology)
+}
+
+func (w *wsConn) GetProcessName() string {
+	if w.Pid == 0 {
 		return "代理连接"
 	}
-	return CrossCompiled.GetPidName(int32(k.Pid))
+	return CrossCompiled.GetPidName(int32(w.Pid))
 }
-func (k *wsConn) Context() int {
-	return k.SunnyContext
+func (w *wsConn) Context() int {
+	return w.SunnyContext
 }
-func (k *wsConn) MessageId() int {
-	return k._MessageId
+func (w *wsConn) MessageId() int {
+	return w._MessageId
 }
-func (k *wsConn) Theology() int {
-	return k._Theology
+func (w *wsConn) Theology() int {
+	return w._Theology
 }
-func (k *wsConn) PID() int {
-	return k.Pid
+func (w *wsConn) PID() int {
+	return w.Pid
 }
-func (k *wsConn) URL() string {
-	return k.Url
-}
-
-func (k *wsConn) Type() int {
-	return k._Type
+func (w *wsConn) URL() string {
+	return w.Url
 }
 
-func (k *wsConn) ClientIP() string {
-	return k._ClientIP
+func (w *wsConn) Type() int {
+	return w._Type
 }
-func (k *wsConn) Body() []byte {
-	k.c.Sync.Lock()
-	defer k.c.Sync.Unlock()
-	return public.CopyBytes(k.c.Data.Bytes())
+
+func (w *wsConn) ClientIP() string {
+	return w._ClientIP
+}
+func (w *wsConn) Body() []byte {
+	w.c.Sync.Lock()
+	defer w.c.Sync.Unlock()
+	return public.CopyBytes(w.c.Data.Bytes())
 }
 
 // MessageType 获取 消息类型
 // Text=1 Binary=2 Close=8 Ping=9 Pong=10 Invalid=-1/255
-func (k *wsConn) MessageType() int {
-	k.c.Sync.Lock()
-	defer k.c.Sync.Unlock()
-	return k.c.Mt
+func (w *wsConn) MessageType() int {
+	w.c.Sync.Lock()
+	defer w.c.Sync.Unlock()
+	return w.c.Mt
 }
 
 // BodyLen 获取 消息长度
-func (k *wsConn) BodyLen() int {
-	k.c.Sync.Lock()
-	defer k.c.Sync.Unlock()
-	return k.c.Data.Len()
+func (w *wsConn) BodyLen() int {
+	w.c.Sync.Lock()
+	defer w.c.Sync.Unlock()
+	return w.c.Data.Len()
 }
 
 // SetBody 修改 消息
-func (k *wsConn) SetBody(data []byte) bool {
-	k.c.Sync.Lock()
-	defer k.c.Sync.Unlock()
-	k.c.Data.Reset()
-	k.c.Data.Write(data)
+func (w *wsConn) SetBody(data []byte) bool {
+	w.c.Sync.Lock()
+	defer w.c.Sync.Unlock()
+	w.c.Data.Reset()
+	w.c.Data.Write(data)
 	return true
 }
 
 // SendToServer 主动向Websocket服务器发送消息
-func (k *wsConn) SendToServer(MessageType int, data []byte) bool {
-	k.c.Sync.Lock()
-	defer k.c.Sync.Unlock()
-	if k.c.Server != nil {
-		e := k.c.Server.WriteMessage(MessageType, data)
+func (w *wsConn) SendToServer(MessageType int, data []byte) bool {
+	w.c.Sync.Lock()
+	defer w.c.Sync.Unlock()
+	if w.c.Server != nil {
+		e := w.c.Server.WriteMessage(MessageType, data)
 		if e != nil {
 			return false
 		}
@@ -112,11 +121,11 @@ func (k *wsConn) SendToServer(MessageType int, data []byte) bool {
 }
 
 // SendToClient 主动向Websocket客户端发送消息
-func (k *wsConn) SendToClient(MessageType int, data []byte) bool {
-	k.c.Sync.Lock()
-	defer k.c.Sync.Unlock()
-	if k.c.Client != nil {
-		e := k.c.Client.WriteMessage(MessageType, data)
+func (w *wsConn) SendToClient(MessageType int, data []byte) bool {
+	w.c.Sync.Lock()
+	defer w.c.Sync.Unlock()
+	if w.c.Client != nil {
+		e := w.c.Client.WriteMessage(MessageType, data)
 		if e != nil {
 			return false
 		}
@@ -125,14 +134,14 @@ func (k *wsConn) SendToClient(MessageType int, data []byte) bool {
 }
 
 // Close 关闭Websocket连接
-func (k *wsConn) Close() bool {
-	k.c.Sync.Lock()
-	defer k.c.Sync.Unlock()
-	if k.c.Server != nil {
-		_ = k.c.Server.Close()
+func (w *wsConn) Close() bool {
+	w.c.Sync.Lock()
+	defer w.c.Sync.Unlock()
+	if w.c.Server != nil {
+		_ = w.c.Server.Close()
 	}
-	if k.c.Client != nil {
-		_ = k.c.Client.Close()
+	if w.c.Client != nil {
+		_ = w.c.Client.Close()
 	}
 	return true
 }

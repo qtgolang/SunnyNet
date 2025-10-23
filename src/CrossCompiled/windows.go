@@ -18,112 +18,75 @@ import (
 	"github.com/qtgolang/SunnyNet/src/public"
 	"golang.org/x/sys/windows"
 	"io"
-	"net"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 	"unsafe"
 )
 
-func NFapi_SunnyPointer(a ...uintptr) uintptr {
-	if len(a) > 0 {
-		NFapi2.SunnyPointer = a[0]
-	}
-	return NFapi2.SunnyPointer
+func (N NFAPI) UnInstall() bool {
+	NFapi2.UnInstall()
+	return true
 }
-func NFapi_IsInit(a ...bool) bool {
-	if len(a) > 0 {
-		NFapi2.IsInit = a[0]
-	}
+
+func (N NFAPI) Install() bool {
+	return NFapi2.ApiInit()
+}
+
+func (N NFAPI) IsRun() bool {
 	return NFapi2.IsInit
 }
-func Pr_Install() bool {
+
+func (N NFAPI) SetHandle() bool {
+	NFapi2.ProcessPortInt = uint16(N.Sunny.Port())
+	return true
+}
+
+func (N NFAPI) Run() bool {
+	NFapi2.UdpSendReceiveFunc = N.UDP
+	NFapi2.IsInit = NFapi2.ApiInit()
+	return NFapi2.IsInit
+}
+
+func (N NFAPI) Close() bool {
+	NFapi2.ProcessPortInt = 0
+	NFapi2.IsInit = false
+	return true
+}
+
+func (N NFAPI) Name() string {
+	return "NFAPI"
+}
+
+func (p Pr) Install() bool {
 	return Proxifier.Install()
 }
-func Pr_IsInit() bool {
+
+func (p Pr) IsRun() bool {
 	return Proxifier.IsInit()
 }
 
-func Pr_SetHandle(Handle func(conn net.Conn)) bool {
-	return Proxifier.SetHandle(Handle)
+func (p Pr) SetHandle() bool {
+	return Proxifier.SetHandle(p.TCP)
 }
-func NFapi_ProcessPortInt(a ...uint16) uint16 {
-	if len(a) > 0 {
-		NFapi2.ProcessPortInt = a[0]
-	}
-	return NFapi2.ProcessPortInt
+func (p Pr) Run() bool {
+	//安装后自动就启动了
+	return true
 }
-func NFapi_ApiInit() bool {
-	return NFapi2.ApiInit()
+
+func (p Pr) Close() bool {
+	return Proxifier.SetHandle(nil)
 }
-func NFapi_MessageBox(caption, text string, style uintptr) (result int) {
-	return NFapi2.MessageBox(caption, text, style)
+
+func (p Pr) Name() string {
+	return "Proxifier"
 }
-func Drive_UnInstall() {
-	tmp := NFapi2.System32Dir + "\\tmp.tmp"
-	if err := os.WriteFile(tmp, []byte("check"), 0777); err != nil {
-		return
-	}
-	_ = os.Remove(tmp)
-	NFapi2.UnInstall()
+
+func (p Pr) UnInstall() bool {
 	Proxifier.UnInstall()
-	Proxifier.Run("shutdown", "/r", "/f", "/t", "0")
-	time.Sleep(2 * time.Second)
-}
-func NFapi_HookAllProcess(open, StopNetwork bool) {
-	Info.HookAllProcess(open, StopNetwork)
-}
-func NFapi_ClosePidTCP(pid int) {
-	Info.ClosePidTCP(pid)
-}
-func NFapi_DelName(u string) {
-	a, e := public.GbkToUtf8(u)
-	if e != nil {
-		Info.AddName(a)
-	}
-	a, e = public.Utf8ToGbk(u)
-	if e != nil {
-		Info.AddName(a)
-	}
-	Info.DelName(u)
-}
-func NFapi_AddName(u string) {
-	a, e := public.GbkToUtf8(u)
-	if e != nil {
-		Info.AddName(a)
-	}
-	a, e = public.Utf8ToGbk(u)
-	if e != nil {
-		Info.AddName(a)
-	}
-	Info.AddName(u)
-}
-func NFapi_DelPid(pid uint32) {
-	Info.DelPid(pid)
-}
-func NFapi_AddPid(pid uint32) {
-	Info.AddPid(pid)
-}
-
-func NFapi_CancelAll() {
-	Info.CancelAll()
-}
-func NFapi_DelTcpConnectInfo(U uint16) {
-	Info.DelTcpConnectInfo(U)
-}
-func NFapi_GetTcpConnectInfo(U uint16) Info.DrvInfo {
-	return Info.GetTcpConnectInfo(U)
-}
-
-func NFapi_UdpSendReceiveFunc(udp func(Type int, Theoni int64, pid uint32, LocalAddress, RemoteAddress string, data []byte) []byte) func(Type int, Theoni int64, pid uint32, LocalAddress, RemoteAddress string, data []byte) []byte {
-	NFapi2.UdpSendReceiveFunc = udp
-	return NFapi2.UdpSendReceiveFunc
-}
-func NFapi_Api_NfUdpPostSend(id uint64, remoteAddress *NFapi2.SockaddrInx, buf []byte, option *NFapi2.NF_UDP_OPTIONS) (NFapi2.NF_STATUS, error) {
-	return NFapi2.Api.NfUdpPostSend(id, remoteAddress, buf, option)
+	return true
 }
 
 func SetIeProxy(Off bool, Port int) bool {

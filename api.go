@@ -531,6 +531,14 @@ func CloseWebsocket(Theology int) bool {
 }
 
 /*
+GetMessageNote 获取请求中的注释,由脚本代码中设置
+*/
+//export GetMessageNote
+func GetMessageNote(MessageId int) uintptr {
+	return public.PointerPtr(Api.GetMessageNote(MessageId))
+}
+
+/*
 GetWebsocketBody 获取 WebSocket消息 返回数据指针
 */
 //export GetWebsocketBody
@@ -762,11 +770,11 @@ func WebpToPng(webpPath, savePath *C.char) bool {
 
 /*
 OpenDrive 开始进程代理/打开驱动 只允许一个 SunnyNet 使用 [会自动安装所需驱动文件]
-IsNfapi 如果为true表示使用NFAPI驱动 如果为false 表示使用Proxifier
+// DevMode 0=Proxifier,1=NFAPI,2=Tun
 */
 //export OpenDrive
-func OpenDrive(SunnyContext int, isNf bool) bool {
-	return Api.OpenDrive(SunnyContext, isNf)
+func OpenDrive(SunnyContext int, devMode int) bool {
+	return Api.OpenDrive(SunnyContext, devMode)
 }
 
 /*

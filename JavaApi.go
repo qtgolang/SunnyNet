@@ -11,8 +11,11 @@ import (
 	"github.com/qtgolang/SunnyNet/JavaApi/sig"
 	"github.com/qtgolang/SunnyNet/SunnyNet"
 	"github.com/qtgolang/SunnyNet/src/Compress"
+	"github.com/qtgolang/SunnyNet/src/ProcessDrv/SunnyNetUDP"
+	"github.com/qtgolang/SunnyNet/src/ProcessDrv/tun"
 	"github.com/qtgolang/SunnyNet/src/dns"
 	"github.com/qtgolang/SunnyNet/src/public"
+	"runtime"
 	"sync"
 	"time"
 	"unsafe"
@@ -154,103 +157,98 @@ func Java_com_SunnyNet_api_SunnyNetSetCallback(envObj uintptr, clazz uintptr, Su
 		env.ThrowNew(env.FindClass("java/lang/RuntimeException"), "Find Class [onUDPCallback"+FuncSig+"] failed")
 		panic("Find Class [onUDPCallback" + FuncSig + "] failed")
 	}
-
 	httpCallback := func(Conn SunnyNet.ConnHTTP) {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+
 		_env, ret := ___Java_GlobalVM.AttachCurrentThread()
 		if ret != JNI_OK {
 			return
 		}
 		defer ___Java_GlobalVM.DetachCurrentThread()
 
-		EventClass := _env.FindClass("com/SunnyNet/Internal/HTTPEvent")
-		if EventClass == 0 {
-			_env.ThrowNew(_env.FindClass("java/lang/RuntimeException"), "Find Class [com/SunnyNet/Internal/HTTPEvent] failed")
-			panic("Find Class [com/SunnyNet/Internal/HTTPEvent] failed")
-		}
 		_Method := _env.NewString(Conn.Method())
 		_url := _env.NewString(Conn.URL())
 		_er := _env.NewString(Conn.Error())
-
-		EventConstructor := _env.GetMethodID(EventClass, "<init>", fmt.Sprintf("(%s%s%s%s%s%s%s%s)%s", sig.Long, sig.Long, sig.Long, sig.Long, sig.String, sig.String, sig.String, sig.Long, sig.Void))
-		EventObj := _env.NewObjectA(EventClass, EventConstructor, Jvalue(SunnyContext), Jvalue(Conn.Theology()), Jvalue(Conn.MessageId()), Jvalue(Conn.Type()), Jvalue(_Method), Jvalue(_url), Jvalue(_er), Jvalue(Conn.PID()))
+		HTTPEventClass := aliasToClass("HTTPEvent")
+		EventConstructor := _env.GetMethodID(HTTPEventClass, "<init>", fmt.Sprintf("(%s%s%s%s%s%s%s%s)%s", sig.Long, sig.Long, sig.Long, sig.Long, sig.String, sig.String, sig.String, sig.Long, sig.Void))
+		EventObj := _env.NewObjectA(HTTPEventClass, EventConstructor, Jvalue(SunnyContext), Jvalue(Conn.Theology()), Jvalue(Conn.MessageId()), Jvalue(Conn.Type()), Jvalue(_Method), Jvalue(_url), Jvalue(_er), Jvalue(Conn.PID()))
 
 		_env.CallVoidMethodA(obj, onHTTPCallbackMethodId, Jvalue(EventObj))
-		_env.DeleteLocalRef(EventClass)
 		_env.DeleteLocalRef(EventObj)
 		_env.DeleteLocalRef(_Method)
 		_env.DeleteLocalRef(_url)
 		_env.DeleteLocalRef(_er)
 		return
 	}
+
 	tcpCallback := func(Conn SunnyNet.ConnTCP) {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
 		_env, ret := ___Java_GlobalVM.AttachCurrentThread()
 		if ret != JNI_OK {
 			return
 		}
 		defer ___Java_GlobalVM.DetachCurrentThread()
-		EventClass := _env.FindClass("com/SunnyNet/Internal/TCPEvent")
-		if EventClass == 0 {
-			_env.ThrowNew(_env.FindClass("java/lang/RuntimeException"), "Find Class [com/SunnyNet/Internal/TCPEvent] failed")
-			panic("Find Class [com/SunnyNet/Internal/TCPEvent] failed")
-		}
-
 		_LocalAddr := _env.NewString(Conn.LocalAddress())
 		_RemoteAddr := _env.NewString(Conn.RemoteAddress())
 		_data := _env.NewByteArray(Conn.Body())
-		EventConstructor := _env.GetMethodID(EventClass, "<init>", fmt.Sprintf("(%s%s%s%s%s%s%s%s)%s", sig.Long, sig.String, sig.String, sig.Long, sig.Long, sig.Long, sig.Long, sig.ByteArray, sig.Void))
-		EventObj := _env.NewObjectA(EventClass, EventConstructor, Jvalue(SunnyContext), Jvalue(_LocalAddr), Jvalue(_RemoteAddr), Jvalue(Conn.Theology()), Jvalue(Conn.MessageId()), Jvalue(Conn.Type()), Jvalue(Conn.PID()), Jvalue(_data))
+		TCPEventClass := aliasToClass("TCPEvent")
+		EventConstructor := _env.GetMethodID(TCPEventClass, "<init>", fmt.Sprintf("(%s%s%s%s%s%s%s%s)%s", sig.Long, sig.String, sig.String, sig.Long, sig.Long, sig.Long, sig.Long, sig.ByteArray, sig.Void))
+		EventObj := _env.NewObjectA(TCPEventClass, EventConstructor, Jvalue(SunnyContext), Jvalue(_LocalAddr), Jvalue(_RemoteAddr), Jvalue(Conn.Theology()), Jvalue(Conn.MessageId()), Jvalue(Conn.Type()), Jvalue(Conn.PID()), Jvalue(_data))
 
 		_env.CallVoidMethodA(obj, onTCPMethodId, Jvalue(EventObj))
-		_env.DeleteLocalRef(EventClass)
 		_env.DeleteLocalRef(EventObj)
 		_env.DeleteLocalRef(_LocalAddr)
 		_env.DeleteLocalRef(_RemoteAddr)
 		_env.DeleteLocalRef(_data)
 	}
+
 	wsCallback := func(Conn SunnyNet.ConnWebSocket) {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
 		_env, ret := ___Java_GlobalVM.AttachCurrentThread()
 		if ret != JNI_OK {
 			return
 		}
 		defer ___Java_GlobalVM.DetachCurrentThread()
 
-		EventClass := _env.FindClass("com/SunnyNet/Internal/WebSocketEvent")
-		if EventClass == 0 {
-			_env.ThrowNew(_env.FindClass("java/lang/RuntimeException"), "Find Class [com/SunnyNet/Internal/WebSocketEvent] failed")
-			panic("Find Class [com/SunnyNet/Internal/WebSocketEvent] failed")
-		}
 		_Method := _env.NewString(Conn.Method())
 		_url := _env.NewString(Conn.URL())
-		EventConstructor := _env.GetMethodID(EventClass, "<init>", fmt.Sprintf("(%s%s%s%s%s%s%s%s)%s", sig.Long, sig.Long, sig.Long, sig.Long, sig.String, sig.String, sig.Long, sig.Long, sig.Void))
-		EventObj := _env.NewObjectA(EventClass, EventConstructor, Jvalue(SunnyContext), Jvalue(Conn.Theology()), Jvalue(Conn.MessageId()), Jvalue(Conn.Type()), Jvalue(_Method), Jvalue(_url), Jvalue(Conn.PID()), Jvalue(Conn.MessageType()))
+		WebSocketEventClass := aliasToClass("WebSocketEvent")
+		EventConstructor := _env.GetMethodID(WebSocketEventClass, "<init>", fmt.Sprintf("(%s%s%s%s%s%s%s%s)%s", sig.Long, sig.Long, sig.Long, sig.Long, sig.String, sig.String, sig.Long, sig.Long, sig.Void))
+		EventObj := _env.NewObjectA(WebSocketEventClass, EventConstructor, Jvalue(SunnyContext), Jvalue(Conn.Theology()), Jvalue(Conn.MessageId()), Jvalue(Conn.Type()), Jvalue(_Method), Jvalue(_url), Jvalue(Conn.PID()), Jvalue(Conn.MessageType()))
 
 		_env.CallVoidMethodA(obj, onWebSocketMethodId, Jvalue(EventObj))
 		_env.DeleteLocalRef(_Method)
 		_env.DeleteLocalRef(_url)
-		_env.DeleteLocalRef(EventClass)
 		_env.DeleteLocalRef(EventObj)
 		return
 	}
+
 	udpCallback := func(Conn SunnyNet.ConnUDP) {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
 		_env, ret := ___Java_GlobalVM.AttachCurrentThread()
 		if ret != JNI_OK {
 			return
 		}
 		defer ___Java_GlobalVM.DetachCurrentThread()
-		EventClass := _env.FindClass("com/SunnyNet/Internal/UDPEvent")
-		if EventClass == 0 {
-			_env.ThrowNew(_env.FindClass("java/lang/RuntimeException"), "Find Class [com/SunnyNet/Internal/UDPEvent] failed")
-			panic("Find Class [com/SunnyNet/Internal/UDPEvent] failed")
-		}
+		MessageId := Conn.MessageId()
+		SunnyNetUDP.ResetMessage(MessageId, Conn.Body())
+
 		_LocalAddr := _env.NewString(Conn.LocalAddress())
 		_RemoteAddr := _env.NewString(Conn.RemoteAddress())
-		EventConstructor := _env.GetMethodID(EventClass, "<init>", fmt.Sprintf("(%s%s%s%s%s%s%s)%s", sig.Long, sig.String, sig.String, sig.Long, sig.Long, sig.Long, sig.Long, sig.Void))
-		EventObj := _env.NewObjectA(EventClass, EventConstructor, Jvalue(SunnyContext), Jvalue(_LocalAddr), Jvalue(_RemoteAddr), Jvalue(Conn.Theology()), Jvalue(Conn.MessageId()), Jvalue(Conn.Type()), Jvalue(Conn.PID()))
+		UDPEventClass := aliasToClass("UDPEvent")
+		EventConstructor := _env.GetMethodID(UDPEventClass, "<init>", fmt.Sprintf("(%s%s%s%s%s%s%s)%s", sig.Long, sig.String, sig.String, sig.Long, sig.Long, sig.Long, sig.Long, sig.Void))
+		EventObj := _env.NewObjectA(UDPEventClass, EventConstructor, Jvalue(SunnyContext), Jvalue(_LocalAddr), Jvalue(_RemoteAddr), Jvalue(Conn.Theology()), Jvalue(MessageId), Jvalue(Conn.Type()), Jvalue(Conn.PID()))
 		_env.CallVoidMethodA(obj, onUDPMethodId, Jvalue(EventObj))
-		_env.DeleteLocalRef(EventClass)
 		_env.DeleteLocalRef(EventObj)
 		_env.DeleteLocalRef(_LocalAddr)
 		_env.DeleteLocalRef(_RemoteAddr)
+
+		Conn.SetBody(SunnyNetUDP.GetMessage(MessageId))
+		SunnyNetUDP.DelMessage(MessageId)
 		return
 	}
 
@@ -266,6 +264,8 @@ func Java_com_SunnyNet_api_SunnyNetSetCallback(envObj uintptr, clazz uintptr, Su
 		panic("Find Class [onScriptCodeSaveCallback" + FuncSig + "] failed")
 	}
 	log := func(Context int, info ...any) {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
 		_env, ret := ___Java_GlobalVM.AttachCurrentThread()
 		if ret != JNI_OK {
 			return
@@ -276,6 +276,8 @@ func Java_com_SunnyNet_api_SunnyNetSetCallback(envObj uintptr, clazz uintptr, Su
 		_env.DeleteLocalRef(_logInfo)
 	}
 	code := func(Context int, code []byte) {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
 		_env, ret := ___Java_GlobalVM.AttachCurrentThread()
 		if ret != JNI_OK {
 			return
@@ -629,6 +631,15 @@ func Java_com_SunnyNet_api_GetRequestAllHeader(envObj uintptr, clazz uintptr, Me
 }
 
 /*
+ava_com_SunnyNet_api_GetMessageNote 获取请求中的注释,由脚本代码中设置
+*/
+//export ava_com_SunnyNet_api_GetMessageNote
+func ava_com_SunnyNet_api_GetMessageNote(envObj uintptr, clazz uintptr, MessageId int64) uintptr {
+	env := Env(envObj)
+	return env.NewString(Api.GetMessageNote(int(MessageId)))
+}
+
+/*
 Java_com_SunnyNet_api_SetRequestProxy 设置HTTP/S请求代理，仅支持Socket5和http 例如 socket5://admin:123456@127.0.0.1:8888 或 http://admin:123456@127.0.0.1:8888
 */
 //
@@ -962,8 +973,8 @@ func Java_com_SunnyNet_api_WebpToPng(envObj uintptr, clazz uintptr, webpPath, sa
 Java_com_SunnyNet_api_OpenDrive 开启进程代理/打开驱动
 */
 //export Java_com_SunnyNet_api_OpenDrive
-func Java_com_SunnyNet_api_OpenDrive(envObj uintptr, clazz uintptr, SunnyContext int64, isNf bool) bool {
-	return Api.OpenDrive(int(SunnyContext), isNf)
+func Java_com_SunnyNet_api_OpenDrive(envObj uintptr, clazz uintptr, SunnyContext int64, devMode int64) bool {
+	return Api.OpenDrive(int(SunnyContext), int(devMode))
 }
 
 /*
@@ -1480,6 +1491,8 @@ func Java_com_SunnyNet_api_SocketClientDial(envObj uintptr, clazz uintptr, Conte
 		panic("Find Class [onCallback(JJ[B)V] failed")
 	}
 	f := func(Context, types int, bs []byte) {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
 		_env, ret := ___Java_GlobalVM.AttachCurrentThread()
 		if ret != JNI_OK {
 			return
@@ -1593,6 +1606,8 @@ func Java_com_SunnyNet_api_WebsocketHeartbeat(envObj uintptr, clazz uintptr, Con
 				methodId := env.GetMethodID(cls, "onHeartbeatCallback", "(J)V")
 				if methodId != 0 {
 					Api.WebsocketHeartbeat(int(Context), int(HeartbeatTime), 0, func(_Context int) {
+						runtime.LockOSThread()
+						defer runtime.UnlockOSThread()
 						_env, ret := ___Java_GlobalVM.AttachCurrentThread()
 						if ret != JNI_OK {
 							return
@@ -1625,6 +1640,8 @@ func Java_com_SunnyNet_api_WebsocketDial(envObj uintptr, clazz uintptr, Context 
 			panic("Find Class [onCallback(JJ[BJ)V] failed")
 		}
 		f := func(Context, types int, bs []byte, messageType int) {
+			runtime.LockOSThread()
+			defer runtime.UnlockOSThread()
 			_env, ret := ___Java_GlobalVM.AttachCurrentThread()
 			if ret != JNI_OK {
 				return
@@ -1704,6 +1721,8 @@ func Java_com_SunnyNet_api_RedisSubscribe(envObj uintptr, clazz uintptr, Context
 		panic("Find Class [onCallback(Ljava/lang/String;)V] failed")
 	}
 	f := func(message string) {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
 		_env, ret := ___Java_GlobalVM.AttachCurrentThread()
 		if ret != JNI_OK {
 			return
@@ -2027,6 +2046,11 @@ func Java_com_SunnyNet_api_HTTPSetOutRouterIP(envObj uintptr, clazz uintptr, Mes
 	return Api.HTTPSetOutRouterIP(int(MessageId), env.GetString(value))
 }
 
+//export Java_com_SunnyNet_api_OnTunSetFd
+func Java_com_SunnyNet_api_OnTunSetFd(JavaVM uintptr, reserved uintptr, fd int64) {
+	tun.SetFd(int(fd))
+}
+
 type _GlobalRef struct {
 	obj     uintptr
 	Type    string
@@ -2044,39 +2068,42 @@ func Java_GlobalRef_Add(Type string, obj uintptr, Context int) {
 	___Java_GlobalRef_index++
 	___Java_GlobalRef_map[___Java_GlobalRef_index] = _GlobalRef{obj: obj, Type: Type, Context: Context}
 }
+
 func goJavaInit() {
+	// 固定在一个线程上
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	if ___Java_GlobalVM == 0 {
+		return
+	}
+
+	env, ok := ___Java_GlobalVM.AttachCurrentThread()
+	if ok != JNI_OK {
+		return
+	}
+	defer ___Java_GlobalVM.DetachCurrentThread() // 退出时再 detach
+
 	for {
 		time.Sleep(10 * time.Second)
-		if ___Java_GlobalVM == 0 {
-			return
-		}
-		env, ok := ___Java_GlobalVM.AttachCurrentThread()
-		if ok != JNI_OK {
-			continue
-		}
+
 		for key, v := range ___Java_GlobalRef_map {
 			switch v.Type {
 			case "SocketClient":
-				w := Api.LoadSocketContext(v.Context)
-				if w == nil {
+				if Api.LoadSocketContext(v.Context) == nil {
 					env.DeleteGlobalRef(v.obj)
 					delete(___Java_GlobalRef_map, key)
 				}
-				break
 			case "Redis":
-				w := Api.LoadRedisContext(v.Context)
-				if w == nil {
+				if Api.LoadRedisContext(v.Context) == nil {
 					env.DeleteGlobalRef(v.obj)
 					delete(___Java_GlobalRef_map, key)
 				}
-				break
 			case "websocket":
-				w := Api.LoadWebSocketContext(v.Context)
-				if w == nil {
+				if Api.LoadWebSocketContext(v.Context) == nil {
 					env.DeleteGlobalRef(v.obj)
 					delete(___Java_GlobalRef_map, key)
 				}
-				break
 			case "SunnyNet":
 				SunnyNet.SunnyStorageLock.Lock()
 				w := SunnyNet.SunnyStorage[v.Context]
@@ -2085,18 +2112,53 @@ func goJavaInit() {
 					env.DeleteGlobalRef(v.obj)
 					delete(___Java_GlobalRef_map, key)
 				}
-				break
 			}
 		}
-		___Java_GlobalVM.DetachCurrentThread()
 	}
 }
 
 var ___Java_GlobalVM VM
 
+var _classList = make(map[string]Jclass)
+var _classLock sync.Mutex
+
+func aliasToClass(ClassAlias string) Jclass {
+	_classLock.Lock()
+	defer _classLock.Unlock()
+	return _classList[ClassAlias]
+}
+
+// classInit 因为 FindClass 在新线程里会失败，因为新线程没有应用类加载器。 所以全局缓存
+func classInit(env Env) {
+	_classLock.Lock()
+	defer _classLock.Unlock()
+
+	names := []struct {
+		alias, path string
+	}{
+		{"HTTPEvent", "com/SunnyNet/Internal/HTTPEvent"},
+		{"TCPEvent", "com/SunnyNet/Internal/TCPEvent"},
+		{"WebSocketEvent", "com/SunnyNet/Internal/WebSocketEvent"},
+		{"UDPEvent", "com/SunnyNet/Internal/UDPEvent"},
+	}
+
+	for _, n := range names {
+		local := env.FindClass(n.path)
+		if local == 0 {
+			panic("FindClass [" + n.path + "] failed")
+		}
+		_classList[n.alias] = env.NewGlobalRef(local)
+	}
+}
+
 //export JNI_OnLoad
 func JNI_OnLoad(JavaVM uintptr, reserved uintptr) int {
 	___Java_GlobalVM = VM(JavaVM)
+	env, ret := ___Java_GlobalVM.GetEnv(JNI_VERSION_1_6)
+	if ret != JNI_OK {
+		return 0
+	}
 	go goJavaInit()
+	classInit(env)
 	return JNI_VERSION_1_6
 }

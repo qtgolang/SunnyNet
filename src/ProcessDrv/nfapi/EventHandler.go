@@ -7,6 +7,8 @@ import "C"
 import (
 	"fmt"
 	. "github.com/qtgolang/SunnyNet/src/ProcessDrv/Info"
+	"github.com/qtgolang/SunnyNet/src/ProcessDrv/ProcessCheck"
+	"github.com/qtgolang/SunnyNet/src/ProcessDrv/SunnyNetUDP"
 	net2 "github.com/qtgolang/SunnyNet/src/iphlpapi/net"
 	"github.com/qtgolang/SunnyNet/src/public"
 	"github.com/shirou/gopsutil/process"
@@ -33,7 +35,6 @@ var Api = new(NFApi)
 var ProcessPortInt uint16
 var SunnyPointer = uintptr(0)
 var IsInit = false
-var UdpSendReceiveFunc func(Type int, Theoni int64, pid uint32, LocalAddress, RemoteAddress string, data []byte) []byte
 
 func threadStart() {
 
@@ -111,17 +112,10 @@ func tcpConnectRequest(id uint64, pConnInfo *NF_TCP_CONN_INFO) {
 			}
 		}
 	}
-	Lock.Lock()
-	if HookProcess == false {
-		if Name[strings.ToLower(ProcessName)] == false {
-			if Pid[pConnInfo.ProcessId.Get()] == false {
-				Lock.Unlock()
-				_, _ = Api.NfTcpDisableFiltering(id)
-				return
-			}
-		}
+	if ProcessCheck.CheckPidByName(int32(pConnInfo.ProcessId.Get()), ProcessName) {
+		_, _ = Api.NfTcpDisableFiltering(id)
+		return
 	}
-	Lock.Unlock()
 	if IsFilterRequests(ProcessName, pConnInfo.RemoteAddress.String()) {
 		return
 	}
@@ -136,9 +130,7 @@ func tcpConnectRequest(id uint64, pConnInfo *NF_TCP_CONN_INFO) {
 
 			//这里是IPV6
 			Process := &ProcessInfo{Pid: strconv.Itoa(int(pConnInfo.ProcessId.Get())), RemoteAddress: IP.String(), RemotePort: pConnInfo.RemoteAddress.GetPort(), Id: id, V6: true}
-			Lock.Lock()
-			Proxy[pConnInfo.LocalAddress.GetPort()] = Process
-			Lock.Unlock()
+			ProcessCheck.AddDevObj(pConnInfo.LocalAddress.GetPort(), Process)
 			pConnInfo.RemoteAddress.SetIP(false, net.ParseIP(getIPV6Lan()))
 			pConnInfo.RemoteAddress.SetPort(ProcessPortInt)
 			return
@@ -153,17 +145,13 @@ func tcpConnectRequest(id uint64, pConnInfo *NF_TCP_CONN_INFO) {
 		var Port UINT16
 		Port.BigEndianSet(ProcessPortInt)
 		pConnInfo.RemoteAddress.Port = Port
-		Lock.Lock()
-		Proxy[pConnInfo.LocalAddress.GetPort()] = Process
-		Lock.Unlock()
+		ProcessCheck.AddDevObj(pConnInfo.LocalAddress.GetPort(), Process)
 		return
 	}
 	// 如果连接是 IPv4 的，则将连接的远程地址改为本地 IPv4 地址，并保存到代理列表中
 	_, i := pConnInfo.RemoteAddress.GetIP()
 	Process := &ProcessInfo{Pid: strconv.Itoa(int(pConnInfo.ProcessId.Get())), RemoteAddress: i.String(), RemotePort: pConnInfo.RemoteAddress.GetPort(), Id: id}
-	Lock.Lock()
-	Proxy[pConnInfo.LocalAddress.GetPort()] = Process
-	Lock.Unlock()
+	ProcessCheck.AddDevObj(pConnInfo.LocalAddress.GetPort(), Process)
 	pConnInfo.RemoteAddress.SetIP(true, net.ParseIP("127.0.0.1"))
 	pConnInfo.RemoteAddress.SetPort(ProcessPortInt)
 	return
@@ -177,9 +165,7 @@ func tcpClosed(id uint64, pConnInfo *NF_TCP_CONN_INFO) {
 	if pConnInfo == nil {
 		return
 	}
-	Lock.Lock()
-	delete(Proxy, pConnInfo.LocalAddress.GetPort())
-	Lock.Unlock()
+	ProcessCheck.DelDevObj(pConnInfo.LocalAddress.GetPort())
 	return
 }
 
@@ -220,18 +206,11 @@ func isEmpower(id uint64) (bool, SockaddrInx, uint32, NF_UDP_CONN_INFO) {
 
 	// 获取进程名，并检查是否在代理名单中
 	_, _, ProcessName := Api.NfgetProcessNameA(pConnInfo.ProcessId.Get())
-	Lock.Lock()
-	if HookProcess == false {
-		if Name[strings.ToLower(ProcessName)] == false {
-			if Pid[pConnInfo.ProcessId.Get()] == false {
-				Lock.Unlock()
-				Api.NfTcpDisableFiltering(id)
-				return false, pConnInfo.LocalAddress, pConnInfo.ProcessId.Get(), pConnInfo
-			}
-		}
-	}
-	Lock.Unlock()
 
+	if ProcessCheck.CheckPidByName(int32(pConnInfo.ProcessId.Get()), ProcessName) {
+		Api.NfTcpDisableFiltering(id)
+		return false, pConnInfo.LocalAddress, pConnInfo.ProcessId.Get(), pConnInfo
+	}
 	// 如果有权限，则返回 true，并将本地地址和进程 ID 返回
 	return true, pConnInfo.LocalAddress, pConnInfo.ProcessId.Get(), pConnInfo
 }
@@ -245,21 +224,24 @@ func udpClosed(id uint64, pConnInfo *NF_UDP_CONN_INFO) {
 	if pConnInfo == nil {
 		return
 	}
-	tid := NfIdGetTid(id)
-	if tid < 1 {
+	mu.Lock()
+	obj := list[id]
+	mu.Unlock()
+	if obj == nil {
 		return
 	}
 	if UdpSendReceiveFunc != nil {
-		o := NfTidGetObj(tid)
-		if o != nil {
-			UdpSendReceiveFunc(public.SunnyNetUDPTypeClosed, o.Theoni, pConnInfo.ProcessId.Get(), pConnInfo.LocalAddress.String(), o.Send.RemoteAddress.String(), nil)
-		}
+		UdpSendReceiveFunc(public.SunnyNetUDPTypeClosed, obj.Theoni, pConnInfo.ProcessId.Get(), pConnInfo.LocalAddress.String(), obj.Send.RemoteAddress.String(), nil)
 	}
-	NfDelTid(tid)
+	mu.Lock()
+	delete(list, id)
+	mu.Unlock()
+	SunnyNetUDP.DelUDPItem(obj.Theoni)
 	return
 }
 
 func udpReceive(id uint64, RemoteAddress *SockaddrInx, buf []byte, options *NF_UDP_OPTIONS) {
+
 	if RemoteAddress == nil {
 		return
 	}
@@ -267,19 +249,20 @@ func udpReceive(id uint64, RemoteAddress *SockaddrInx, buf []byte, options *NF_U
 		_, _ = Api.NfUdpPostReceive(id, RemoteAddress, buf, options)
 		return
 	}
-	_, LocalAddress, Pid, pConnInfo := isEmpower(id)
-	k := pConnInfo.LocalAddress.String() + RemoteAddress.String()
-	o := UdpSenders.GetObj(k)
-	if o == nil {
+	_, LocalAddress, pid, _ := isEmpower(id)
+	mu.Lock()
+	obj := list[id]
+	mu.Unlock()
+	if obj == nil {
 		_, _ = Api.NfUdpPostReceive(id, RemoteAddress, buf, options)
 		return
 	}
-	UdpLock.Lock()
-	if o.Receive == nil {
-		o.Receive = &NfSend{Id: id, RemoteAddress: RemoteAddress.Clone(), options: options.Clone()}
+	mu.Lock()
+	if obj.Receive == nil {
+		obj.Receive = &NfOPT{Id: id, RemoteAddress: RemoteAddress.Clone(), options: options.Clone()}
 	}
-	UdpLock.Unlock()
-	bs := UdpSendReceiveFunc(public.SunnyNetUDPTypeReceive, o.Theoni, Pid, LocalAddress.String(), RemoteAddress.String(), buf)
+	mu.Unlock()
+	bs := UdpSendReceiveFunc(public.SunnyNetUDPTypeReceive, obj.Theoni, pid, LocalAddress.String(), RemoteAddress.String(), buf)
 	if len(bs) > 0 {
 		_, _ = Api.NfUdpPostReceive(id, RemoteAddress, bs, options)
 	}
@@ -292,46 +275,49 @@ func udpSend(id uint64, RemoteAddress *SockaddrInx, buf []byte, options *NF_UDP_
 		return
 	}
 	if UdpSendReceiveFunc == nil || ProcessPortInt == 0 {
-		Api.NfUdpPostSend(id, RemoteAddress, buf, options)
+		_, _ = Api.NfUdpPostSend(id, RemoteAddress, buf, options)
 		return
 	}
 	// 检查授权，并调用相应的 PID
-	ok, LocalAddress, Pid, pConnInfo := isEmpower(id)
+	ok, LocalAddress, pid, _ := isEmpower(id)
 	if !ok {
-		k := RemoteAddress.String() + pConnInfo.LocalAddress.String()
-		o := UdpSenders.GetObj(k)
-		if o == nil {
-			Api.NfUdpPostSend(id, RemoteAddress, buf, options)
+		mu.Lock()
+		obj := list[id]
+		mu.Unlock()
+		if obj == nil {
+			_, _ = Api.NfUdpPostSend(id, RemoteAddress, buf, options)
 			return
 		}
-		UdpLock.Lock()
-		if o.Receive == nil {
-			o.Receive = &NfSend{Id: id, RemoteAddress: RemoteAddress.Clone(), options: options.Clone()}
+		mu.Lock()
+		if obj.Receive == nil {
+			obj.Receive = &NfOPT{Id: id, RemoteAddress: RemoteAddress.Clone(), options: options.Clone()}
 		}
-		UdpLock.Unlock()
+		mu.Unlock()
 		//这里因为是接收 所以 RemoteAddress 是本地地址 而 LocalAddress 是远程地址
-		bs := UdpSendReceiveFunc(public.SunnyNetUDPTypeReceive, o.Theoni, Pid, RemoteAddress.String(), LocalAddress.String(), buf)
+		bs := UdpSendReceiveFunc(public.SunnyNetUDPTypeReceive, obj.Theoni, pid, RemoteAddress.String(), LocalAddress.String(), buf)
 		if len(bs) > 0 {
 			_, _ = Api.NfUdpPostSend(id, RemoteAddress, bs, options)
 		}
 		return
 	}
-
-	// 生成唯一键值并获取连接
-	k := LocalAddress.String() + RemoteAddress.String()
-	o := UdpSenders.GetObj(k)
+	mu.Lock()
+	obj := list[id]
+	mu.Unlock()
 	// 如果连接不存在，则新建连接并添加到连接池中
-	if o == nil {
-		Tid := atomic.AddInt64(&public.Theology, 1)
-		UdpSenders.Add(k, nil, Tid, &NfSend{Id: id, RemoteAddress: RemoteAddress.Clone(), options: options.Clone()}, nil, nil, nil, nil)
-		NfAddTid(id, Tid, k)
-		bs := UdpSendReceiveFunc(public.SunnyNetUDPTypeSend, Tid, Pid, LocalAddress.String(), RemoteAddress.String(), buf)
+	if obj == nil {
+		obj = &udpItem{Theoni: atomic.AddInt64(&public.Theology, 1)}
+		obj.Send = &NfOPT{Id: id, RemoteAddress: RemoteAddress.Clone(), options: options.Clone()}
+		SunnyNetUDP.AddUDPItem(obj.Theoni, obj)
+		mu.Lock()
+		list[id] = obj
+		mu.Unlock()
+		bs := UdpSendReceiveFunc(public.SunnyNetUDPTypeSend, obj.Theoni, pid, LocalAddress.String(), RemoteAddress.String(), buf)
 		if len(bs) > 0 {
 			_, _ = Api.NfUdpPostSend(id, RemoteAddress, bs, options)
 		}
 	} else {
 		// 如果连接已建立，则发送数据
-		bs := UdpSendReceiveFunc(public.SunnyNetUDPTypeSend, o.Theoni, Pid, LocalAddress.String(), RemoteAddress.String(), buf)
+		bs := UdpSendReceiveFunc(public.SunnyNetUDPTypeSend, obj.Theoni, pid, LocalAddress.String(), RemoteAddress.String(), buf)
 		if len(bs) > 0 {
 			_, _ = Api.NfUdpPostSend(id, RemoteAddress, bs, options)
 		}
@@ -345,3 +331,5 @@ func udpCanReceive(id uint64) {
 func udpCanSend(id uint64) {
 	return
 }
+
+var UdpSendReceiveFunc func(Type int, Theoni int64, pid uint32, LocalAddress, RemoteAddress string, data []byte) []byte

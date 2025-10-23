@@ -12,9 +12,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/qtgolang/SunnyNet/src/crypto/tls"
-	"github.com/qtgolang/SunnyNet/src/internal/godebug"
-	"github.com/qtgolang/SunnyNet/src/internal/textproto"
 	"io"
 	"log"
 	"math/rand"
@@ -29,6 +26,10 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/qtgolang/SunnyNet/src/crypto/tls"
+	"github.com/qtgolang/SunnyNet/src/internal/godebug"
+	"github.com/qtgolang/SunnyNet/src/internal/textproto"
 
 	"golang.org/x/net/http/httpguts"
 )

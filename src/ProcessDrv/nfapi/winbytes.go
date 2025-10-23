@@ -97,8 +97,9 @@ func (p *ProcessInfo) IsV6() bool {
 func (p *ProcessInfo) ID() uint64 {
 	return p.Id
 }
-func (p *ProcessInfo) Close() {
+func (p *ProcessInfo) Close() error {
 	_, _ = Api.NfTcpClose(p.Id)
+	return nil
 }
 
 /**

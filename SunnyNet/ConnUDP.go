@@ -3,7 +3,7 @@ package SunnyNet
 import (
 	"github.com/qtgolang/SunnyNet/src/CrossCompiled"
 	"github.com/qtgolang/SunnyNet/src/Interface"
-	"github.com/qtgolang/SunnyNet/src/ProcessDrv/nfapi"
+	"github.com/qtgolang/SunnyNet/src/ProcessDrv/SunnyNetUDP"
 )
 
 type ConnUDP Interface.ConnUDPCall
@@ -18,67 +18,83 @@ type udpConn struct {
 	remoteAddress string
 	data          []byte
 	_Display      bool
+	_note         string
 }
 
-func (U udpConn) SetDisplay(Display bool) {
-	U._Display = Display
+func (u *udpConn) SetNote(s string) {
+	u._note = s
 }
 
-func (U udpConn) GetSocket5User() string {
+func (u *udpConn) GetNote() string {
+	return u._note
+}
+
+func (u *udpConn) SetDisplay(Display bool) {
+	u._Display = Display
+}
+func (u *udpConn) GetSocket5User() string {
 	return ""
 }
 
-func (U udpConn) GetProcessName() string {
-	if U.pid == 0 {
+func (u *udpConn) GetProcessName() string {
+	if u.pid == 0 {
 		return "代理连接"
 	}
-	return CrossCompiled.GetPidName(int32(U.pid))
+	return CrossCompiled.GetPidName(int32(u.pid))
 }
 
 // SetBody 修改消息
-func (U udpConn) SetBody(i []byte) bool {
-	U.data = i
+func (u *udpConn) SetBody(i []byte) bool {
+	u.data = i
 	return true
 }
-func (U udpConn) BodyLen() int {
-	return len(U.data)
+func (u *udpConn) BodyLen() int {
+	return len(u.data)
 }
 
-func (U udpConn) Context() int {
-	return U.sunnyContext
+func (u *udpConn) Context() int {
+	return u.sunnyContext
 }
-func (U udpConn) Type() int {
-	return U._type
+func (u *udpConn) Type() int {
+	return u._type
 }
-func (U udpConn) MessageId() int {
-	return U.messageId
+func (u *udpConn) MessageId() int {
+	return u.messageId
 }
-func (U udpConn) Theology() int {
-	return int(U.theology)
-}
-
-func (U udpConn) PID() int {
-	return U.pid
+func (u *udpConn) Theology() int {
+	return int(u.theology)
 }
 
-func (U udpConn) LocalAddress() string {
-	return U.localAddress
+func (u *udpConn) PID() int {
+	return u.pid
 }
 
-func (U udpConn) RemoteAddress() string {
-	return U.remoteAddress
+func (u *udpConn) LocalAddress() string {
+	return u.localAddress
 }
 
-func (U udpConn) Body() []byte {
-	return U.data
+func (u *udpConn) RemoteAddress() string {
+	return u.remoteAddress
+}
+
+func (u *udpConn) Body() []byte {
+	return u.data
 }
 
 // SendToServer 主动向服务器发送消息
-func (U udpConn) SendToServer(data []byte) bool {
-	return NFapi.UdpSendToServer(U.theology, data)
+func (u *udpConn) SendToServer(data []byte) bool {
+	obj := SunnyNetUDP.GetUDPItem(u.theology)
+	if obj != nil {
+		return obj.ToServer(data)
+	}
+	return false
 }
 
 // SendToClient 主动向客户端发送消息
-func (U udpConn) SendToClient(data []byte) bool {
-	return NFapi.UdpSendToClient(U.theology, data)
+func (u *udpConn) SendToClient(data []byte) bool {
+	obj := SunnyNetUDP.GetUDPItem(u.theology)
+	if obj != nil {
+		return obj.ToClient(data)
+	}
+	return false
 }

@@ -1,3 +1,6 @@
+//go:build windows
+// +build windows
+
 package Proxifier
 
 /*
@@ -13,10 +16,11 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/qtgolang/SunnyNet/src/ProcessDrv/Info"
+	"github.com/qtgolang/SunnyNet/src/ProcessDrv/ProcessCheck"
 	"net"
 	"os"
 	"path/filepath"
-	"strings"
+	"sync"
 	"time"
 	"unsafe"
 )
@@ -34,31 +38,28 @@ func Write(hPipe C.HANDLE, bs []byte) {
 	C.free(unsafe.Pointer(b))
 }
 
+var mu sync.Mutex
+
 //export Call
 func Call(hPipe C.HANDLE, raw uintptr) {
 	__pid := int(binary.LittleEndian.Uint16(CStringToBytes(raw+0x4EC, 2)))
 	path := wcharPtrToString(raw + 8)
 
-	Info.Lock.Lock()
+	mu.Lock()
 	Handle := HandleClientConn
 	if __pid == myPid {
-		Info.Lock.Unlock()
+		mu.Unlock()
 		return
 	}
 	if Handle == nil {
-		Info.Lock.Unlock()
+		mu.Unlock()
 		return
 	}
 	fileName := filepath.Base(path)
-	if Info.HookProcess == false {
-		if Info.Name[strings.ToLower(fileName)] == false {
-			if Info.Pid[uint32(__pid)] == false {
-				Info.Lock.Unlock()
-				return
-			}
-		}
+	if ProcessCheck.CheckPidByName(int32(__pid), fileName) {
+		return
 	}
-	Info.Lock.Unlock()
+	mu.Unlock()
 	family := int16(binary.LittleEndian.Uint16(CStringToBytes(raw+0x419, 2)))
 	if family == 0 {
 		WriteData := make([]byte, 1020)
@@ -139,15 +140,13 @@ func Call(hPipe C.HANDLE, raw uintptr) {
 					_ISV6 = true
 				}
 				var obj = &proxyProcessInfo{listener: listener, RemoteAddress: domain, RemotePort: uint16(port), V6: _ISV6, Pid: fmt.Sprintf("%d", __pid)}
-
 				connLocalAddr := conn.RemoteAddr().(*net.TCPAddr)
 				connPort := uint16(connLocalAddr.Port)
-				Info.Lock.Lock()
-				Info.Proxy[connPort] = obj
-				Info.Lock.Unlock()
+				ProcessCheck.AddDevObj(connPort, obj)
 				_ = conn.SetDeadline(time.Time{})
 				Handle(conn)
 				_ = conn.Close()
+				ProcessCheck.DelDevObj(connPort)
 			}
 			_ = listener.Close()
 			return
@@ -201,13 +200,14 @@ func (p *proxyProcessInfo) IsV6() bool {
 func (p *proxyProcessInfo) ID() uint64 {
 	return p.Id
 }
-func (p *proxyProcessInfo) Close() {
-	Info.Lock.Lock()
+func (p *proxyProcessInfo) Close() error {
+	mu.Lock()
 	if p.listener != nil {
 		_ = p.listener.Close()
 	}
 	p.listener = nil
-	Info.Lock.Unlock()
+	mu.Unlock()
+	return nil
 }
 func wcharPtrToString(ptr uintptr) string {
 	var length int
@@ -245,14 +245,14 @@ func IsInit() bool {
 }
 func SetHandle(Handle func(conn net.Conn)) bool {
 	res := 0
-	Info.Lock.Lock()
+	mu.Lock()
 	if Handle == nil {
 		res = int(C.StopProxifier())
 	} else {
 		res = int(C.StartProxifier())
 	}
 	HandleClientConn = Handle
-	Info.Lock.Unlock()
+	mu.Unlock()
 	return res == 1
 }
 

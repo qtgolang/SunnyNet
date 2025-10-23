@@ -549,18 +549,6 @@ func (r *Request) AddCookie(c *Cookie) {
 func (r *Request) Referer() string {
 	return r.Header.Get("Referer")
 }
-func (r *Request) SetHeaderLength(i int64) {
-	ok := false
-	for k, _ := range r.Header {
-		if strings.EqualFold(k, "Content-Length") {
-			r.Header[k] = []string{fmt.Sprintf("%d", i)}
-			ok = true
-		}
-	}
-	if !ok {
-		r.Header["Content-Length"] = []string{fmt.Sprintf("%d", i)}
-	}
-}
 
 // multipartByReader is a sentinel value.
 // Its presence in Request.MultipartForm indicates that parsing of the request

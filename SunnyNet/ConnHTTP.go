@@ -34,13 +34,22 @@ type httpConn struct {
 	_serverIP             string
 	_isRandomCipherSuites bool
 	_localAddress         string
+	_note                 string
 	_OutRouterIPFunc      func(string) bool
 	updateRawTarget       func(int uint32)
 }
 
-func (k *httpConn) SetOutRouterIP(way string) bool {
-	if k._OutRouterIPFunc != nil {
-		return k._OutRouterIPFunc(way)
+func (h *httpConn) SetNote(s string) {
+	h._note = s
+}
+
+func (h *httpConn) GetNote() string {
+	return h._note
+}
+
+func (h *httpConn) SetOutRouterIP(way string) bool {
+	if h._OutRouterIPFunc != nil {
+		return h._OutRouterIPFunc(way)
 	}
 	return false
 }

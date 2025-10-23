@@ -16,22 +16,24 @@ import (
 
 // 删除旧的驱动文件
 func deleteOldFiles() {
-	OldFileName := System32Dir + "\\drivers\\SunnyFilter.sys"
-	//复制到临时目录去系统重启后才可删除
-	_ = MoveFileToTempDir(OldFileName, "Sunny_"+RandomLetters(32)+extensionsTemp)
-	//删除临时目录下的所有sys 文件
-	tempDir := os.TempDir()
-	// 搜索所有 .sys 文件
-	_ = filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		// 检查文件是否是 .sys 文件
-		if !info.IsDir() && filepath.Ext(path) == extensionsTemp {
-			_ = os.Remove(path)
-		}
-		return nil
-	})
+	go func() {
+		OldFileName := System32Dir + "\\drivers\\SunnyFilter.sys"
+		//复制到临时目录去系统重启后才可删除
+		_ = MoveFileToTempDir(OldFileName, "Sunny_"+RandomLetters(32)+extensionsTemp)
+		//删除临时目录下的所有sys 文件
+		tempDir := os.TempDir()
+		// 搜索所有 .sys 文件
+		_ = filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			// 检查文件是否是 .sys 文件
+			if !info.IsDir() && filepath.Ext(path) == extensionsTemp {
+				_ = os.Remove(path)
+			}
+			return nil
+		})
+	}()
 }
 func init() {
 	deleteOldFiles()

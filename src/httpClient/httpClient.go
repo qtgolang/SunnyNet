@@ -121,7 +121,28 @@ func Do(req *http.Request, RequestProxy *SunnyProxy.Proxy, CheckRedirect bool, c
 	}
 }
 func do(req *http.Request, RequestProxy *SunnyProxy.Proxy, CheckRedirect bool, config *tls.Config, outTime time.Duration, MConn net.Conn) (*http.Response, net.Conn, error, func()) {
-
+	if req != nil {
+		if req.Header != nil {
+			//请求时，删除协议头中的长度，请求时会自动添加
+			ContentLengthName := ""
+			var ContentLengthValue []string
+			sName := "Content-Length"
+			for k, v := range req.Header {
+				if strings.EqualFold(k, sName) {
+					ContentLengthName = k //保留原本的大小写名称
+					ContentLengthValue = v
+					break
+				}
+			}
+			if ContentLengthName != "" {
+				req.Header.Del(sName)
+				defer func() {
+					req.Header.Del(sName)
+					req.Header.SetArray(sName, ContentLengthValue)
+				}()
+			}
+		}
+	}
 	SendTimeout := 30 * 1000 * time.Millisecond
 	outTime = SendTimeout
 	client := httpClientGet(req, RequestProxy, config, outTime)
@@ -148,7 +169,7 @@ func do(req *http.Request, RequestProxy *SunnyProxy.Proxy, CheckRedirect bool, c
 					if er != nil {
 						if strings.Contains(er.Error(), "close") {
 							if client.Conn != nil {
-								Conn := *client.Conn
+								Conn := client.Conn
 								_ = Conn.Close()
 							} else {
 								Cancel()
@@ -177,14 +198,16 @@ func do(req *http.Request, RequestProxy *SunnyProxy.Proxy, CheckRedirect bool, c
 	}
 	var rConn net.Conn
 	if client.Conn != nil {
-		rConn = *client.Conn
+		rConn = client.Conn
 	}
 	address, proxy, _ := net.SplitHostPort(client.RequestProxy.DialAddr)
-	ip := net.ParseIP(address)
-	if ip == nil {
-		req.SetContext(public.SunnyNetServerIpTags, client.RequestProxy.DialAddr)
-	} else {
-		req.SetContext(public.SunnyNetServerIpTags, SunnyProxy.FormatIP(ip, proxy))
+	if req != nil {
+		ip := net.ParseIP(address)
+		if ip == nil {
+			req.SetContext(public.SunnyNetServerIpTags, client.RequestProxy.DialAddr)
+		} else {
+			req.SetContext(public.SunnyNetServerIpTags, SunnyProxy.FormatIP(ip, proxy))
+		}
 	}
 	return reqs, rConn, err, func() {
 		if err != nil {
@@ -236,7 +259,7 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 				}
 				client.RequestProxy = nproxy
 				if client.Conn != nil {
-					Conn := *client.Conn
+					Conn := client.Conn
 					if timeout == 0 {
 						_ = Conn.SetDeadline(time.Time{})
 						_ = Conn.SetWriteDeadline(time.Time{})
@@ -326,7 +349,7 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 	Tr.DialContext = func(ctx context.Context, network, addr string) (cnn net.Conn, _ error) {
 		defer func() {
 			if cnn != nil {
-				res.Conn = &cnn
+				res.Conn = cnn
 				if timeout != 0 {
 					_ = cnn.SetDeadline(time.Now().Add(timeout))
 					_ = cnn.SetWriteDeadline(time.Now().Add(timeout))
@@ -376,7 +399,6 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 		if strings.ToLower(address) == "localhost" {
 			return res.RequestProxy.Dial(network, "127.0.0.1:"+port, res.outRouterIP)
 		}
-
 		var retries bool
 		for {
 			if !isLookupIP {
@@ -476,7 +498,7 @@ type clientPart struct {
 	Client       http.Client
 	time         time.Time
 	key          uint32
-	Conn         *net.Conn
+	Conn         net.Conn
 	Transport    *http.Transport
 	RequestProxy *SunnyProxy.Proxy
 	h2           bool

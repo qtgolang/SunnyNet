@@ -79,7 +79,7 @@ func (s *proxyRequest) CallbackTCPRequest(callType int, _msg *public.TcpMsg, Rem
 		delete(httpStorage, MessageId)
 		messageIdLock.Unlock()
 	}()
-	Ams := &tcpConn{
+	m := &tcpConn{
 		c:                _msg,
 		messageId:        MessageId,
 		_type:            callType,
@@ -90,12 +90,16 @@ func (s *proxyRequest) CallbackTCPRequest(callType int, _msg *public.TcpMsg, Rem
 		sunnyContext:     s.Global.SunnyContext,
 		_Display:         true,
 		_OutRouterIPFunc: s.SetOutRouterIP,
+		_note:            s._note,
 	}
-	s.Global.scriptTCPCall(Ams)
-	if !Ams._Display {
+	s.Global.scriptTCPCall(m)
+	messageIdLock.Lock()
+	s._note = m._note
+	messageIdLock.Unlock()
+	if !m._Display {
 		return
 	}
-	msg := Ams.c
+	msg := m.c
 	if callType == public.SunnyNetMsgTypeTCPAboutToConnect {
 		if msg.Proxy != nil {
 			_msg.Proxy = msg.Proxy
@@ -103,7 +107,7 @@ func (s *proxyRequest) CallbackTCPRequest(callType int, _msg *public.TcpMsg, Rem
 	}
 	if s.TcpCall < 10 {
 		if s.TcpGoCall != nil {
-			s.TcpGoCall(Ams)
+			s.TcpGoCall(m)
 			if callType == public.SunnyNetMsgTypeTCPAboutToConnect {
 				if msg.Proxy != nil {
 					_msg.Proxy = msg.Proxy
@@ -185,8 +189,10 @@ func (s *proxyRequest) CallbackBeforeRequest() {
 		_localAddress:    s.Conn.LocalAddr().String(),
 		_OutRouterIPFunc: s.SetOutRouterIP,
 		updateRawTarget:  s.UpdateRawTarget,
+		_note:            s._note,
 	}
 	s.Global.scriptHTTPCall(m)
+	s._note = m._note
 	s.TlsConfig = m._tls
 	s.Response.Response = m._response
 	s._Display = m._Display
@@ -254,8 +260,10 @@ func (s *proxyRequest) CallbackBeforeResponse() {
 		_localAddress:    s.Conn.LocalAddr().String(),
 		_OutRouterIPFunc: s.SetOutRouterIP,
 		updateRawTarget:  s.UpdateRawTarget,
+		_note:            s._note,
 	}
 	s.Global.scriptHTTPCall(m)
+	s._note = m._note
 	s.Response.Response = m._response
 	if s._Display == false {
 		return
@@ -357,8 +365,10 @@ func (s *proxyRequest) CallbackError(err string) {
 		_localAddress:    s.Conn.LocalAddr().String(),
 		_OutRouterIPFunc: s.SetOutRouterIP,
 		updateRawTarget:  s.UpdateRawTarget,
+		_note:            s._note,
 	}
 	s.Global.scriptHTTPCall(m)
+	s._note = m._note
 	if s._Display == false {
 		return
 	}
@@ -397,8 +407,12 @@ func (s *proxyRequest) CallbackWssRequest(State int, Method, Url string, msg *pu
 		_ClientIP:     s.Conn.RemoteAddr().String(),
 		_localAddress: s.Conn.LocalAddr().String(),
 		_Display:      true,
+		_note:         s._note,
 	}
 	s.Global.scriptWebsocketCall(m)
+	messageIdLock.Lock()
+	s._note = m._note
+	messageIdLock.Unlock()
 	if !s._Display {
 		return
 	}

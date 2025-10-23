@@ -72,7 +72,7 @@ func (s *proxyRequest) httpCall(rw http.ResponseWriter, req *http.Request) {
 	} else {
 		res.Body = &httpBody{Body: req.Body, c: s.Conn, req: res}
 	}
-	IsRequestRawBody := res.GetBodyLength() >= s.Global._http_max_body_len
+	IsRequestRawBody := res.GetBodyLength() >= s.Global.httpMaxBodyLen
 	Length := res.GetBodyLength()
 	res.SetContext(public.SunnyNetRawRequestBodyLength, Length)
 	res.IsRawBody = IsRequestRawBody

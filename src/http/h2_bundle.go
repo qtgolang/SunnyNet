@@ -5923,7 +5923,9 @@ func (sc *http2serverConn) newWriterAndRequest(st *http2stream, f *http2MetaHead
 	}
 	bodyOpen := !f.StreamEnded()
 	if bodyOpen {
-		if vv, ok := rp.header["Content-Length"]; ok {
+		vv:= rp.header.GetArray(`Content-Length`)
+		 ok:=len(vv)>0
+		if  ok {
 			if cl, err := strconv.ParseUint(vv[0], 10, 63); err == nil {
 				req.ContentLength = int64(cl)
 			} else {
@@ -5958,13 +5960,13 @@ func (sc *http2serverConn) newWriterAndRequestNoBody(st *http2stream, rp http2re
 		rp.header.Del("Expect")
 	}
 	// Merge Cookie headers into one "; "-delimited value.
-	if cookies := rp.header["Cookie"]; len(cookies) > 1 {
+	if cookies := rp.header.GetArray("Cookie"); len(cookies) > 1 {
 		rp.header.Set("Cookie", strings.Join(cookies, "; "))
 	}
 
 	// Setup Trailers
 	var trailer Header
-	for _, v := range rp.header["Trailer"] {
+	for _, v := range rp.header.GetArray("Trailer"){
 		for _, key := range strings.Split(v, ",") {
 			key = CanonicalHeaderKey(textproto.TrimString(key))
 			switch key {
@@ -8191,7 +8193,7 @@ func (cc *http2ClientConn) responseHeaderTimeout() time.Duration {
 // Certain headers are special-cased as okay but not transmitted later.
 func http2checkConnHeaders(req *Request) error {
 	if v := req.Header.Get("Upgrade"); v != "" {
-		return fmt.Errorf("http2: invalid Upgrade request header: %q", req.Header["Upgrade"])
+		return fmt.Errorf("http2: invalid Upgrade request header: %q", req.Header.GetArray("Upgrade"))
 	}
 	req.Header.Del("Transfer-Encoding")
 	req.Header.Del("Connection")
@@ -8388,7 +8390,7 @@ func (cs *http2clientStream) writeRequest(req *Request) (err error) {
 
 	continueTimeout := cc.t.expectContinueTimeout()
 	if continueTimeout != 0 {
-		if !httpguts.HeaderValuesContainsToken(req.Header["Expect"], "100-continue") {
+		if !httpguts.HeaderValuesContainsToken(req.Header.GetArray("Expect"), "100-continue") {
 			continueTimeout = 0
 		} else {
 			cs.on100 = make(chan struct{}, 1)
@@ -8949,12 +8951,18 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 		if trailers != "" {
 			f("trailer", trailers)
 		}
-		if _, ok1 := req.Header["content-length"]; !ok1 && http2shouldSendReqContentLength(req.Method, contentLength) {
+		vv := req.Header.GetArray("content-length")
+		ok1:=len(vv)>0
+		if  !ok1 && http2shouldSendReqContentLength(req.Method, contentLength) {
+			req.Header.Del("content-length")
 			req.Header["content-length"] = []string{strconv.FormatInt(contentLength, 10)}
 		}
 
+		vv  = req.Header.GetArray("accept-encoding")
+		ok1 =len(vv)>0
 		// Does not include accept-encoding header if its defined in req.Header
-		if _, ok1 := req.Header["accept-encoding"]; !ok1 && addGzipHeader {
+		if  !ok1 && addGzipHeader {
+			req.Header.Del("accept-encoding")
 			req.Header["accept-encoding"] = []string{"gzip"}
 		}
 		var didUA bool
@@ -9483,7 +9491,7 @@ func (rl *http2clientConnReadLoop) handleResponse(cs *http2clientStream, f *http
 	}
 
 	res.ContentLength = -1
-	if clens := res.Header["Content-Length"]; len(clens) == 1 {
+	if clens := res.Header.GetArray("Content-Length"); len(clens) == 1 {
 		if cl, err := strconv.ParseUint(clens[0], 10, 63); err == nil {
 			res.ContentLength = int64(cl)
 		} else {
@@ -10134,7 +10142,7 @@ func (r http2errorReader) Read(p []byte) (int, error) { return 0, r.err }
 // isConnectionCloseRequest reports whether req should use its own
 // connection for a single request and then close the connection.
 func http2isConnectionCloseRequest(req *Request) bool {
-	return req.Close || httpguts.HeaderValuesContainsToken(req.Header["Connection"], "close")
+	return req.Close || httpguts.HeaderValuesContainsToken(req.Header.GetArray(`Connection`), "close")
 }
 
 // registerHTTPSProtocol calls Transport.RegisterProtocol but

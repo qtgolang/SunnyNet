@@ -1,35 +1,27 @@
 package Api
 
 import (
-	"github.com/qtgolang/SunnyNet/src/ProcessDrv/nfapi"
+	"github.com/qtgolang/SunnyNet/src/ProcessDrv/SunnyNetUDP"
 )
 
 func SetUdpData(MessageId int, data []byte) bool {
-	NFapi.UdpSync.Lock()
-	buff := NFapi.UdpMap[MessageId]
-	if buff != nil {
-		buff.Reset()
-		buff.Write(data)
-		NFapi.UdpSync.Unlock()
-		return true
-	}
-	NFapi.UdpSync.Unlock()
-	return false
+	return SunnyNetUDP.SetMessage(MessageId, data)
 }
 func GetUdpData(MessageId int) []byte {
-	NFapi.UdpSync.Lock()
-	buff := NFapi.UdpMap[MessageId]
-	if buff != nil {
-		NFapi.UdpSync.Unlock()
-		return buff.Bytes()
-	}
-	NFapi.UdpSync.Unlock()
-	return nil
+	return SunnyNetUDP.GetMessage(MessageId)
 }
 
 func UdpSendToServer(tid int, data []byte) bool {
-	return NFapi.UdpSendToServer(int64(tid), data)
+	obj := SunnyNetUDP.GetUDPItem(int64(tid))
+	if obj != nil {
+		return obj.ToServer(data)
+	}
+	return false
 }
 func UdpSendToClient(tid int, data []byte) bool {
-	return NFapi.UdpSendToClient(int64(tid), data)
+	obj := SunnyNetUDP.GetUDPItem(int64(tid))
+	if obj != nil {
+		return obj.ToClient(data)
+	}
+	return false
 }

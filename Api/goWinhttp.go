@@ -215,8 +215,10 @@ func HTTPSendBin(Context int, data []byte) {
 	}
 	if k.req.ContentLength > 0 {
 		k.req.Header["Content-Length"] = []string{fmt.Sprintf("%d", len(data))}
+		k.req.ContentLength = int64(len(data))
 	} else {
 		k.req.Header.Del("Content-Length")
+		k.req.ContentLength = 0
 	}
 	var random func() []uint16
 	if k.randomTLS {

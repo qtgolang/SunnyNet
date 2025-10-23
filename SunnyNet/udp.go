@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/qtgolang/SunnyNet/src/Call"
-	"github.com/qtgolang/SunnyNet/src/ProcessDrv/nfapi"
+	"github.com/qtgolang/SunnyNet/src/ProcessDrv/SunnyNetUDP"
 	"github.com/qtgolang/SunnyNet/src/public"
+	"sync"
 
 	"net"
 	"sync/atomic"
@@ -134,9 +135,15 @@ func (s *Sunny) listenUdpGo() {
 			continue
 		}
 		k := addr.String() + _info.RemoteAddress
-		// 如果连接池中不存在该连接，则新建连接并添加到连接池中
-		if c, Tid := NFapi.UdpSenders.Get(addr.String() + _info.RemoteAddress); c == nil {
-			Tid = atomic.AddInt64(&public.Theology, 1)
+		mu.Lock()
+		keyHash := public.FNV32(k)
+		Item, ok := list[keyHash]
+		mu.Unlock()
+		if !ok || Item == nil {
+			Item = &udpItem{
+				LocalAddress: _info.LocalAddress,
+				Tid:          atomic.AddInt64(&public.Theology, 1),
+			}
 			serverAddr, er := net.ResolveUDPAddr("udp", _info.RemoteAddress)
 			if er != nil {
 				continue
@@ -145,23 +152,34 @@ func (s *Sunny) listenUdpGo() {
 			if er != nil {
 				continue
 			}
-			NFapi.UdpSenders.Add(k, conn, Tid, nil, nil, s.udpSocket, _info.LocalAddress, _info.From)
-			NFapi.NfAddTid(0, Tid, k)
-			go s.goUdp(_info, Tid, addr.String(), _info.RemoteAddress, conn)
+			Item.remote = conn
+			list[keyHash] = Item
+			Item.From = _info.From
+			Item._toToClient = func(i []byte) bool {
+				var b []byte
+				b = append(b, Item.From...)
+				b = append(b, i...)
+				_, e := s.udpSocket.WriteToUDP(b, Item.LocalAddress)
+				return e == nil
+			}
+			Item._toToServer = func(i []byte) bool {
+				_, e := Item.remote.Write(bs)
+				return e == nil
+			}
+			SunnyNetUDP.AddUDPItem(Item.Tid, Item)
+			go s.goUdp(_info, Item.Tid, addr.String(), _info.RemoteAddress, conn, keyHash)
 		}
-		// 获取连接并发送数据
-		conn, Tid := NFapi.UdpSenders.Get(k)
-		if conn != nil {
-			bs = s.udpNFSendReceive(public.SunnyNetUDPTypeSend, Tid, 0, addr.String(), _info.RemoteAddress, _info.Data)
+		if Item.remote != nil {
+			bs = s.udpSendReceive(public.SunnyNetUDPTypeSend, Item.Tid, 0, addr.String(), _info.RemoteAddress, _info.Data)
 			if len(bs) > 0 {
-				_, _ = conn.Write(bs)
+				_, _ = Item.remote.Write(bs)
 			}
 		}
 	}
 }
 
 // 实现 Sunny 结构体的 goUdp 方法，用于处理 UDP 连接
-func (s *Sunny) goUdp(info *udpInfo, tid int64, Local, Remote string, conn *net.UDPConn) {
+func (s *Sunny) goUdp(info *udpInfo, tid int64, Local, Remote string, conn *net.UDPConn, keyHash uint32) {
 	// 创建指定大小的缓冲区
 	buff := make([]byte, 65536)
 	// 循环读取 UDP 数据
@@ -173,7 +191,7 @@ func (s *Sunny) goUdp(info *udpInfo, tid int64, Local, Remote string, conn *net.
 			break
 		}
 		// 调用 udpNFSendReceive 方法发送并接收数据，并将返回的数据添加来源信息
-		bs := s.udpNFSendReceive(public.SunnyNetUDPTypeReceive, tid, 0, Local, Remote, buff[:nt])
+		bs := s.udpSendReceive(public.SunnyNetUDPTypeReceive, tid, 0, Local, Remote, buff[:nt])
 		if len(bs) < 1 {
 			continue
 		}
@@ -183,14 +201,15 @@ func (s *Sunny) goUdp(info *udpInfo, tid int64, Local, Remote string, conn *net.
 		// 将处理后的数据写入 Socket 中
 		_, _ = s.udpSocket.WriteToUDP(data, info.LocalAddress)
 	}
-	// 从连接池中移除 UDP 连接并发送关闭连接的消息
-	NFapi.UdpSenders.Del(info.LocalAddress.String() + info.RemoteAddress)
-	s.udpNFSendReceive(public.SunnyNetUDPTypeClosed, tid, 0, Local, Remote, nil)
-	// 删除 唯一ID
-	NFapi.NfDelTid(tid)
+
+	s.udpSendReceive(public.SunnyNetUDPTypeClosed, tid, 0, Local, Remote, nil)
+	SunnyNetUDP.DelUDPItem(tid)
+	mu.Lock()
+	delete(list, keyHash)
+	mu.Unlock()
 }
 
-func (s *Sunny) udpNFSendReceive(Type int, Theoni int64, pid uint32, LocalAddress, RemoteAddress string, data []byte) []byte {
+func (s *Sunny) udpSendReceive(Type int, Theoni int64, pid uint32, LocalAddress, RemoteAddress string, data []byte) []byte {
 	if s.disableUDP {
 		return nil
 	}
@@ -212,22 +231,44 @@ func (s *Sunny) udpNFSendReceive(Type int, Theoni int64, pid uint32, LocalAddres
 	MessageId := NewMessageId()
 	var buff bytes.Buffer
 	buff.Write(n.Body())
-
-	// 获取锁并将 buffer 存储到 UdpMap 中
-	NFapi.UdpSync.Lock()
-	NFapi.UdpMap[MessageId] = &buff
-	NFapi.UdpSync.Unlock()
+	SunnyNetUDP.ResetMessage(MessageId, buff.Bytes())
 	// 调用回调函数，并传入相关参数
 	Call.Call(s.udpCallback, s.SunnyContext, LocalAddress, RemoteAddress, int(Type), MessageId, int(Theoni), int(pid))
-	// 获取锁并从 UdpMap 中获取返回值
-	NFapi.UdpSync.Lock()
-	rBody := NFapi.UdpMap[MessageId]
-	delete(NFapi.UdpMap, MessageId)
-	NFapi.UdpSync.Unlock()
-	// 如果返回值为空，则返回原始数据
-	if rBody == nil {
-		return data
-	}
+	buff.Reset()
+	buff.Write(SunnyNetUDP.GetMessage(MessageId))
+	SunnyNetUDP.DelMessage(MessageId)
 	// 否则返回返回值的字节切片
-	return rBody.Bytes()
+	return buff.Bytes()
+}
+
+var mu sync.Mutex
+var list = make(map[uint32]*udpItem)
+
+type udpItem struct {
+	LocalAddress *net.UDPAddr
+	remote       *net.UDPConn
+	From         []byte
+	Tid          int64
+	_toToClient  func(i []byte) bool
+	_toToServer  func(i []byte) bool
+}
+
+func (it udpItem) ToClient(i []byte) bool {
+	if len(i) < 1 {
+		return false
+	}
+	if it._toToClient != nil {
+		return it._toToClient(i)
+	}
+	return false
+}
+
+func (it udpItem) ToServer(i []byte) bool {
+	if len(i) < 1 {
+		return false
+	}
+	if it._toToServer != nil {
+		return it._toToServer(i)
+	}
+	return false
 }

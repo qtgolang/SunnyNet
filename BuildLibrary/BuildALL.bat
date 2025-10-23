@@ -27,6 +27,14 @@ go build -trimpath -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath
 
 
 set GOOS=android
+set GOARCH=arm64
+set CC=%NDK%\bin\aarch64-linux-android21-clang
+echo [Full]_Build_Android_arm64-v8a.so
+go build -trimpath  -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Full/Android/arm64-v8a/libSunnyNet.so"
+echo [Mini]_Build_Android_arm64-v8a.so
+go build -trimpath  -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Mini/Android/arm64-v8a/libSunnyNet.so"
+
+set GOOS=android
 set GOARCH=arm
 set CC=%NDK%\bin\armv7a-linux-androideabi21-clang
 echo [Full]_Build_Android_armeabi-v7a.so
@@ -35,12 +43,21 @@ echo [Mini]_Build_Android_armeabi-v7a.so
 go build -trimpath  -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Mini/Android/armeabi-v7a/libSunnyNet.so"
 
 set GOOS=android
-set GOARCH=arm64
-set CC=%NDK%\bin\aarch64-linux-android21-clang
-echo [Full]_Build_Android_arm64-v8a.so
-go build -trimpath  -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Full/Android/arm64-v8a/libSunnyNet.so"
-echo [Mini]_Build_Android_arm64-v8a.so
-go build -trimpath  -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Mini/Android/arm64-v8a/libSunnyNet.so"
+set GOARCH=386
+set CC=%NDK%\bin\x86_64-linux-android21-clang
+echo [Full]_Build_Android_x86.so
+go build -trimpath  -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Full/Android/x86/libSunnyNet.so"
+echo [Mini]_Build_Android_x86.so
+go build -trimpath  -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Mini/Android/x86/libSunnyNet.so"
+
+set GOOS=android
+set GOARCH=386
+set CC=%NDK%\bin\x86_64-linux-android21-clang
+echo [Full]_Build_Android_x86_64.so
+go build -trimpath  -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Full/Android/x86_64/libSunnyNet.so"
+echo [Mini]_Build_Android_x86_64.so
+go build -trimpath  -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Mini/Android/x86_64/libSunnyNet.so"
+
 
 set GOOS=android
 set GOARCH=386

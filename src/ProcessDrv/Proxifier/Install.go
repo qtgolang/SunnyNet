@@ -1,3 +1,6 @@
+//go:build windows
+// +build windows
+
 package Proxifier
 
 import (
@@ -29,6 +32,7 @@ func UnInstall() {
 			Info.Wow64RevertWow64FsRedirection(oldValue)
 		}
 	}
+	Run("shutdown", "/r", "/f", "/t", "0")
 	return
 }
 

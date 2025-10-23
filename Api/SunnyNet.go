@@ -1003,6 +1003,22 @@ func CloseWebsocket(Theology int) bool {
 	return true
 }
 
+/*
+GetMessageNote 获取请求中的注释,由脚本代码中设置
+*/
+func GetMessageNote(MessageId int) string {
+	k, ok := SunnyNet.GetSceneProxyRequest(MessageId)
+	if ok == false {
+		return ""
+	}
+	if k == nil {
+		return ""
+	}
+	k.Lock.Lock()
+	defer k.Lock.Unlock()
+	return k.GetNote()
+}
+
 // GetWebsocketBodyLen 获取 WebSocket消息长度
 func GetWebsocketBodyLen(MessageId int) int {
 	k, ok := SunnyNet.GetSceneWebSocketMsg(MessageId)
@@ -1359,13 +1375,13 @@ func CancelIEProxy(SunnyContext int) bool {
 }
 
 // OpenDrive 开始进程代理/打开驱动 只允许一个 SunnyNet 使用 [会自动安装所需驱动文件]
-// IsNfapi 如果为true表示使用NFAPI驱动 如果为false 表示使用Proxifier
-func OpenDrive(SunnyContext int, IsNf bool) bool {
+// DevMode 0=Proxifier,1=NFAPI 2=Tun
+func OpenDrive(SunnyContext int, DevMode int) bool {
 	SunnyNet.SunnyStorageLock.Lock()
 	w := SunnyNet.SunnyStorage[SunnyContext]
 	SunnyNet.SunnyStorageLock.Unlock()
 	if w != nil {
-		return w.OpenDrive(IsNf)
+		return w.OpenDrive(DevMode)
 	}
 	return false
 }

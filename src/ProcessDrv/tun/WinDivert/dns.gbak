@@ -1,0 +1,145 @@
+package divert
+
+import (
+	"fmt"
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
+	"net"
+	"sync"
+)
+
+func (d *Divert) handleDNS53(h *Handle, data []byte, addr *Address, SrcIP, DstIP net.IP, v4 bool, pkt gopacket.Packet) bool {
+	udpLayer := pkt.Layer(layers.LayerTypeUDP)
+	dnsLayer := pkt.Layer(layers.LayerTypeDNS)
+	if udpLayer == nil || dnsLayer == nil {
+		return false
+	}
+	udp := udpLayer.(*layers.UDP)
+	dns := dnsLayer.(*layers.DNS)
+	if udp.DstPort != 53 && udp.SrcPort != 53 {
+		return false
+	}
+	if dns.QR { // 不是请求则跳过（我们只伪造请求的响应）
+		return false
+	}
+	if len(dns.Questions) == 0 {
+		return false
+	}
+	q := dns.Questions[0]
+	if q.Type != layers.DNSTypeA {
+		return false
+	}
+	respDNS := &layers.DNS{
+		ID:           dns.ID,
+		QR:           true,
+		OpCode:       dns.OpCode,
+		AA:           true,
+		RD:           dns.RD,
+		RA:           true,
+		ResponseCode: layers.DNSResponseCodeNoErr,
+		QDCount:      dns.QDCount,
+		ANCount:      1,
+		Questions:    dns.Questions,
+	}
+	name := string(q.Name)
+	dnsMutex.Lock()
+	a := getDnsName(name)
+	if a == "" {
+		a = createLocalHost()
+		addDns(name, a)
+	}
+	dnsMutex.Unlock()
+	i := net.ParseIP(a)
+	rr := layers.DNSResourceRecord{
+		Name:  q.Name,
+		Type:  layers.DNSTypeA,
+		Class: layers.DNSClassIN,
+		TTL:   3,
+		IP:    i,
+	}
+	respDNS.Answers = []layers.DNSResourceRecord{rr}
+	var respIP gopacket.NetworkLayer
+	var respIP2 gopacket.SerializableLayer
+	if v4 {
+		ip := &layers.IPv4{
+			Version:  4,
+			IHL:      5,
+			TTL:      3,
+			Protocol: layers.IPProtocolUDP,
+			SrcIP:    DstIP,
+			DstIP:    SrcIP,
+		}
+		respIP = ip
+		respIP2 = ip
+	} else {
+		ip := &layers.IPv6{
+			Version:      6,
+			TrafficClass: 0,
+			FlowLabel:    0,
+			HopLimit:     3,
+			NextHeader:   layers.IPProtocolUDP,
+			SrcIP:        DstIP,
+			DstIP:        SrcIP,
+		}
+		respIP = ip
+		respIP2 = ip
+	}
+	respUDP := &layers.UDP{
+		SrcPort: layers.UDPPort(53),
+		DstPort: udp.SrcPort,
+	}
+	_ = respUDP.SetNetworkLayerForChecksum(respIP)
+	buf := gopacket.NewSerializeBuffer()
+	opts := gopacket.SerializeOptions{FixLengths: true, ComputeChecksums: true}
+	_ = gopacket.SerializeLayers(buf, opts, respIP2, respUDP, respDNS)
+	addr2 := addr.Clone()
+	addr2.SetOutbound(false)
+	if _, err := h.Send(buf.Bytes(), addr2); err != nil {
+		return false
+	}
+	fmt.Println(name, "->", a)
+	return true
+}
+
+var dnsMutex sync.Mutex
+var udpList1 = make(map[string]string)
+var udpList2 = make(map[string]string)
+
+func addDns(name string, val string) {
+	udpList1[name] = val
+	udpList2[val] = name
+}
+func getDnsName(name string) string {
+	return udpList1[name]
+}
+func getDnsValue(val string) string {
+	dnsMutex.Lock()
+	defer dnsMutex.Unlock()
+	return udpList2[val]
+}
+
+var local [3]int = [3]int{1, 2, 2}
+
+func createLocalHost() string {
+	a1 := local[0]
+	a2 := local[1]
+	a3 := local[2]
+	a3++
+	if a3 > 254 {
+		a3 = 2
+		a2++
+	}
+	if a2 > 254 {
+		a2 = 2
+		a1++
+	}
+	if a1 > 254 {
+		a1 = 1
+		a2 = 2
+		a3 = 2
+	}
+	local[0] = a1
+	local[1] = a2
+	local[2] = a3
+	return fmt.Sprintf("10.%d.%d.%d", a1, a2, a3)
+}

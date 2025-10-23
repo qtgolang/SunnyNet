@@ -16,6 +16,7 @@ func MoveFileToTempDir(srcFile, destFileName string) string {
 	destPath := filepath.Join(tempDir, destFileName)
 	// 移动文件
 	err := os.Rename(srcFile, destPath)
+	_ = os.Remove(destPath)
 	if err != nil {
 		return ""
 	}

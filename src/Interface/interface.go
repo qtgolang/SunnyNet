@@ -8,6 +8,7 @@ import (
 /* =============================== 脚本 中 使用的接口 ================================================ */
 type ConnHTTPScriptCall interface {
 	connHTTP
+	noteScript
 	/*
 		SetDisplay
 		设置是否通知回调显示当前请求(默认为true)
@@ -24,6 +25,7 @@ type ConnHTTPScriptCall interface {
 }
 type ConnWebSocketScriptCall interface {
 	ConnWebSocketCall
+	noteScript
 	/*
 		SetDisplay
 		设置是否通知回调显示当前请求(默认为true)
@@ -33,6 +35,7 @@ type ConnWebSocketScriptCall interface {
 }
 type ConnTCPScriptCall interface {
 	ConnTCPCall
+	noteScript
 	/*
 		SetDisplay
 		设置是否通知回调显示当前请求(默认为true)
@@ -42,6 +45,7 @@ type ConnTCPScriptCall interface {
 }
 type ConnUDPScriptCall interface {
 	ConnUDPCall
+	noteScript
 	/*
 		SetDisplay
 		设置是否通知回调显示当前请求(默认为true)
@@ -54,6 +58,7 @@ type ConnUDPScriptCall interface {
 type ConnUDPCall interface {
 	general
 	address
+	note
 	/*
 		Body
 		获取消息内容
@@ -90,6 +95,7 @@ type ConnTCPCall interface {
 	proxy
 	router
 	address
+	note
 	/*
 		Body
 
@@ -152,6 +158,7 @@ type ConnTCPCall interface {
 }
 type ConnWebSocketCall interface {
 	general
+	note
 	/*
 		Body
 
@@ -235,6 +242,7 @@ type ConnWebSocketCall interface {
 }
 type ConnHTTPCall interface {
 	connHTTP
+	note
 	/*
 		SetHTTP2Config
 
@@ -447,7 +455,7 @@ type address interface {
 	SendToClient(data []byte) bool
 }
 type general interface {
-
+	note
 	/*
 		Context
 
@@ -509,4 +517,26 @@ type router interface {
 		设置空字符串 表示使用默认出口IP
 	*/
 	SetOutRouterIP(way string) bool
+}
+
+/* =============================================================================== */
+//非脚本不允许调用设置
+type noteScript interface {
+	note
+	/*
+		SetNote
+
+		设置当前请求注释
+
+		note=要设置的注释
+	*/
+	SetNote(note string)
+}
+type note interface {
+	/*
+		GetNote
+
+		获取当前请求注释
+	*/
+	GetNote() string
 }

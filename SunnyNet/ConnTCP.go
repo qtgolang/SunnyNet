@@ -20,96 +20,105 @@ type tcpConn struct {
 	pid              int            //Pid
 	_Display         bool
 	_OutRouterIPFunc func(string) bool
+	_note            string
 }
 
-func (k *tcpConn) SetOutRouterIP(way string) bool {
-	if k._type != public.SunnyNetMsgTypeTCPAboutToConnect {
+func (t *tcpConn) SetNote(s string) {
+	t._note = s
+}
+
+func (t *tcpConn) GetNote() string {
+	return t._note
+}
+
+func (t *tcpConn) SetOutRouterIP(way string) bool {
+	if t._type != public.SunnyNetMsgTypeTCPAboutToConnect {
 		return false
 	}
-	if k._OutRouterIPFunc != nil {
-		return k._OutRouterIPFunc(way)
+	if t._OutRouterIPFunc != nil {
+		return t._OutRouterIPFunc(way)
 	}
 	return false
 }
 
-func (k *tcpConn) SetDisplay(Display bool) {
-	k._Display = Display
+func (t *tcpConn) SetDisplay(Display bool) {
+	t._Display = Display
 }
 
-func (k *tcpConn) GetSocket5User() string {
-	return GetSocket5User(k.theology)
+func (t *tcpConn) GetSocket5User() string {
+	return GetSocket5User(t.theology)
 }
 
-func (k *tcpConn) GetProcessName() string {
-	if k.pid == 0 {
+func (t *tcpConn) GetProcessName() string {
+	if t.pid == 0 {
 		return "代理连接"
 	}
-	return CrossCompiled.GetPidName(int32(k.pid))
+	return CrossCompiled.GetPidName(int32(t.pid))
 }
-func (k *tcpConn) Context() int {
-	return k.sunnyContext
-}
-
-func (k *tcpConn) Theology() int {
-	return k.theology
+func (t *tcpConn) Context() int {
+	return t.sunnyContext
 }
 
-func (k *tcpConn) MessageId() int {
-	return k.messageId
+func (t *tcpConn) Theology() int {
+	return t.theology
 }
 
-func (k *tcpConn) Type() int {
-	return k._type
+func (t *tcpConn) MessageId() int {
+	return t.messageId
 }
 
-func (k *tcpConn) PID() int {
-	return k.pid
+func (t *tcpConn) Type() int {
+	return t._type
 }
 
-func (k *tcpConn) LocalAddress() string {
-	return k.localAddr
+func (t *tcpConn) PID() int {
+	return t.pid
 }
 
-func (k *tcpConn) RemoteAddress() string {
-	return k.remoteAddr
+func (t *tcpConn) LocalAddress() string {
+	return t.localAddr
+}
+
+func (t *tcpConn) RemoteAddress() string {
+	return t.remoteAddr
 }
 
 // SetAgent Set仅支持S5代理 例如 socket5://admin:123456@127.0.0.1:8888
-func (k *tcpConn) SetAgent(ProxyUrl string, outTime ...int) bool {
-	if k._type != public.SunnyNetMsgTypeTCPAboutToConnect {
+func (t *tcpConn) SetAgent(ProxyUrl string, outTime ...int) bool {
+	if t._type != public.SunnyNetMsgTypeTCPAboutToConnect {
 		return false
 	}
-	if k.c == nil {
+	if t.c == nil {
 		return false
 	}
 	var er error
-	k.c.Proxy, er = SunnyProxy.ParseProxy(ProxyUrl, outTime...)
+	t.c.Proxy, er = SunnyProxy.ParseProxy(ProxyUrl, outTime...)
 	if er != nil {
 		return false
 	}
-	return k.c.Proxy != nil
+	return t.c.Proxy != nil
 }
 
 // SetBody 修改 TCP/发送接收数据
-func (k *tcpConn) SetBody(data []byte) bool {
-	if k._type != public.SunnyNetMsgTypeTCPClientReceive && k._type != public.SunnyNetMsgTypeTCPClientSend {
+func (t *tcpConn) SetBody(data []byte) bool {
+	if t._type != public.SunnyNetMsgTypeTCPClientReceive && t._type != public.SunnyNetMsgTypeTCPClientSend {
 		return false
 	}
-	if k.c == nil {
+	if t.c == nil {
 		return false
 	}
-	k.c.Data.Reset()
-	k.c.Data.Write(data)
+	t.c.Data.Reset()
+	t.c.Data.Write(data)
 	return true
 }
 
 // Close 关闭TCP连接
-func (k *tcpConn) Close() bool {
-	if k._type == public.SunnyNetMsgTypeTCPAboutToConnect {
+func (t *tcpConn) Close() bool {
+	if t._type == public.SunnyNetMsgTypeTCPAboutToConnect {
 		return false
 	}
 	TcpSceneLock.Lock()
-	w := TcpStorage[k.theology]
+	w := TcpStorage[t.theology]
 	TcpSceneLock.Unlock()
 	if w == nil {
 		return false
@@ -126,22 +135,22 @@ func (k *tcpConn) Close() bool {
 }
 
 // SetNewAddress 修改目标连接地址 目标地址必须带端口号 例如 baidu.com:443 [仅限即将连接时使用]
-func (k *tcpConn) SetNewAddress(ip string) bool {
-	if k.c == nil {
+func (t *tcpConn) SetNewAddress(ip string) bool {
+	if t.c == nil {
 		return false
 	}
-	if k._type == public.SunnyNetMsgTypeTCPAboutToConnect {
-		k.c.Data.Reset()
-		k.c.Data.WriteString(ip)
+	if t._type == public.SunnyNetMsgTypeTCPAboutToConnect {
+		t.c.Data.Reset()
+		t.c.Data.WriteString(ip)
 		return true
 	}
 	return false
 }
 
 // SendToServer 模拟客户端向服务器端主动发送数据
-func (k *tcpConn) SendToServer(data []byte) bool {
+func (t *tcpConn) SendToServer(data []byte) bool {
 	TcpSceneLock.Lock()
-	w := TcpStorage[k.theology]
+	w := TcpStorage[t.theology]
 	TcpSceneLock.Unlock()
 	if w == nil {
 		return false
@@ -162,9 +171,9 @@ func (k *tcpConn) SendToServer(data []byte) bool {
 }
 
 // SendToClient  模拟服务器端向客户端主动发送数据
-func (k *tcpConn) SendToClient(data []byte) bool {
+func (t *tcpConn) SendToClient(data []byte) bool {
 	TcpSceneLock.Lock()
-	w := TcpStorage[k.theology]
+	w := TcpStorage[t.theology]
 	TcpSceneLock.Unlock()
 	if w == nil {
 		return false
@@ -185,23 +194,23 @@ func (k *tcpConn) SendToClient(data []byte) bool {
 }
 
 // Body  获取发送、接收的数据
-func (k *tcpConn) Body() []byte {
-	if k == nil {
+func (t *tcpConn) Body() []byte {
+	if t == nil {
 		return []byte{}
 	}
-	if k.c == nil {
+	if t.c == nil {
 		return []byte{}
 	}
-	return public.CopyBytes(k.c.Data.Bytes())
+	return public.CopyBytes(t.c.Data.Bytes())
 }
 
 // BodyLen  获取发送、接收的数据长度
-func (k *tcpConn) BodyLen() int {
-	if k == nil {
+func (t *tcpConn) BodyLen() int {
+	if t == nil {
 		return 0
 	}
-	if k.c == nil {
+	if t.c == nil {
 		return 0
 	}
-	return k.c.Data.Len()
+	return t.c.Data.Len()
 }

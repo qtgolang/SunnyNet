@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/qtgolang/SunnyNet/Api"
 	"github.com/qtgolang/SunnyNet/SunnyNet"
+	"github.com/qtgolang/SunnyNet/src/dns"
 	"github.com/qtgolang/SunnyNet/src/encoding/hex"
 	"github.com/qtgolang/SunnyNet/src/public"
 	"log"
@@ -13,15 +14,15 @@ import (
 
 func wss() {
 	defer os.Exit(0)
-	id := Api.CreateWebsocket()
-	aa := Api.WebsocketDial(id, "https://dsc-yunxin.hwwt8.com/socket.io/1/websocket/8480ab7b-b985-4115-ae86-595f8d7a7982", "", 0, nil, true, "https://:@60.184.194.92:22535", 0, 5000, "")
-	fmt.Println(aa)
-	fmt.Println(Api.WebsocketGetErr(id))
-	fmt.Println("==========================================================")
-	Api.WebsocketClose(id)
-	aa = Api.WebsocketDial(id, "https://dsc-yunxin.hwwt8.com/socket.io/1/websocket/8480ab7b-b985-4115-ae86-595f8d7a7982", "", 0, nil, true, "https://:@60.184.194.92:22535", 0, 5000, "")
-	fmt.Println(aa)
-	fmt.Println(Api.WebsocketGetErr(id))
+	dns.SetDnsServer("remote")
+	id := Api.CreateHTTPClient()
+	Api.HTTPSetProxyIP(id, "http://:@183.146.240.245:13477")
+	Api.HTTPOpen(id, "GET", "https://www.baidu.com/s")
+	Api.HTTPSetHeader(id, "host", "www.baidu.com")
+	Api.HTTPSendBin(id, []byte(""))
+
+	fmt.Println(Api.HTTPGetCode(id))
+
 }
 func Test() {
 	//wss()
@@ -73,8 +74,8 @@ func Test() {
 	*/
 	/*
 		//使用驱动抓包 (两个驱动各有特点自行尝试,哪个能用/好用 用哪个)
-		Sunny.OpenDrive(true)  // 使用 NFAPI 驱动
-		Sunny.OpenDrive(false) // 使用 Proxifier 驱动 不支持32位操作系统，不支持UDP数据捕获
+		Sunny.OpenDrive(2)  // 0=Proxifier,1=NFAPI,2=Tun
+		Sunny.OpenDrive(0)  // 0=Proxifier,1=NFAPI,2=Tun
 
 		Sunny.ProcessAddName("gamemon.des") //添加指定进程名称
 		Sunny.ProcessDelName("gamemon.des") //删除已添加的指定进程名称
@@ -109,21 +110,30 @@ func Test() {
 	//Sunny.SetMustTcpRegexp("shopr-cnlive.mcoc-cdn.cn", false)
 	//Sunny.SetGlobalProxy("socks://192.168.31.1:4321", 30000)
 	//设置回调地址
+
 	Sunny.SetGoCallback(HttpCallback, TcpCallback, WSCallback, UdpCallback)
-	Port := 2025
+	Port := 2021
 	Sunny.SetPort(Port).Start()
+	fmt.Println(Sunny.OpenDrive(2))
+	//Sunny.ProcessALLName(true, false)
+	//Sunny.ProcessAddName("___go_build_udpTest.exe")
 	//Sunny.MustTcp(true)
 	//Sunny.SetDnsServer("223.5.5.5:853")
 	//Sunny.SetGlobalProxy("http://abc9068377_mdse-zone-abc:11223344@b062e1016fa4e9c4.abcproxy.vip:4950", 60000)
-	//if Sunny.OpenDrive(true) {
-	//	Sunny.ProcessAddName("chatgpt.exe")
+	//if Sunny.OpenDrive(2) {
+	Sunny.ProcessAddName("as5.exe")
+	//Sunny.ProcessAddName("com.apple.WebKit.Networking")
+	Sunny.ProcessAddName("go_build_VxOCR.exe")
+	//Sunny.ProcessALLName(true, false)
 	//}
 	//fmt.Println(Sunny.SetIEProxy())
+	Sunny.Port()
 	err := Sunny.Error
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("Run Port=", Port)
+
 	//阻止程序退出
 	select {}
 }
@@ -134,10 +144,9 @@ func updateLog() {
 	//2025-07-26 优化 脚本编辑
 }
 func HttpCallback(Conn SunnyNet.ConnHTTP) {
-
 	switch Conn.Type() {
 	case public.HttpSendRequest: //发起请求
-		fmt.Println("发起请求", Conn.Proto())
+		fmt.Println("发起请求", Conn.URL(), Conn.Proto(), Conn.GetProcessName())
 		//Conn.SetResponseBody([]byte("123456"))
 		//直接响应,不让其发送请求
 		//Conn.StopRequest(200, "Hello Word")
@@ -190,33 +199,42 @@ func TcpCallback(Conn SunnyNet.ConnTCP) {
 		log.Println("PID", Conn.PID(), "TCP 断开连接:", Conn.LocalAddress(), "->", Conn.RemoteAddress())
 		return
 	case public.SunnyNetMsgTypeTCPClientSend: //客户端发送数据
-		log.Println("PID", Conn.PID(), "TCP 发送数据", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.Type(), Conn.BodyLen(), Conn.Body())
+		log.Println("PID", Conn.PID(), "TCP 发送数据", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.Type(), Conn.BodyLen(), len(Conn.Body()))
 		return
 	case public.SunnyNetMsgTypeTCPClientReceive: //客户端收到数据
 
-		log.Println("PID", Conn.PID(), "收到数据", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.Type(), Conn.BodyLen(), Conn.Body())
+		log.Println("PID", Conn.PID(), "收到数据", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.Type(), Conn.BodyLen(), len(Conn.Body()))
 		return
 	default:
 		return
 	}
 }
 func UdpCallback(Conn SunnyNet.ConnUDP) {
-	return
 	switch Conn.Type() {
 	case public.SunnyNetUDPTypeSend: //客户端向服务器端发送数据
-
-		log.Println("PID", Conn.PID(), "发送UDP", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.BodyLen())
+		log.Println("PID", Conn.PID(), Conn.GetProcessName(), "发送UDP", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.BodyLen())
 		//修改发送的数据
 		//Conn.SetBody([]byte("Hello Word"))
-
 		return
 	case public.SunnyNetUDPTypeReceive: //服务器端向客户端发送数据
-		log.Println("PID", Conn.PID(), "接收UDP", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.BodyLen())
+		/*
+			go func() {
+					time.Sleep(2 * time.Second)
+					Conn.SendToClient([]byte("1111111111111"))
+					go func() {
+						time.Sleep(1 * time.Second)
+						Conn.SendToClient([]byte("1111111111111"))
+						fmt.Println("主动发送了")
+					}()
+					fmt.Println("主动发送了")
+				}()
+		*/
+		log.Println("PID", Conn.PID(), Conn.GetProcessName(), "接收UDP", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.BodyLen())
 		//修改响应的数据
 		//Conn.SetBody([]byte("Hello Word"))
 		return
 	case public.SunnyNetUDPTypeClosed: //关闭会话
-		log.Println("PID", Conn.PID(), "关闭UDP", Conn.LocalAddress(), Conn.RemoteAddress())
+		log.Println("PID", Conn.PID(), Conn.GetProcessName(), "关闭UDP", Conn.LocalAddress(), Conn.RemoteAddress())
 		return
 	}
 

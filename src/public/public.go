@@ -20,6 +20,7 @@ import (
 	"github.com/qtgolang/SunnyNet/src/http"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
+	"hash/fnv"
 	"io/ioutil"
 	"math"
 	"math/big"
@@ -580,3 +581,9 @@ func SumHashCode(s string) uint32 {
 }
 
 var RouterIPInspect = SunnyProxy.RouterIPInspect
+
+func FNV32(s string) uint32 {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(s))
+	return h.Sum32()
+}

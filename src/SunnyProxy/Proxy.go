@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/qtgolang/SunnyNet/src/crypto/tls"
-	"golang.org/x/net/proxy"
 	"net"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/qtgolang/SunnyNet/src/crypto/tls"
+	"golang.org/x/net/proxy"
 )
 
 var dnsConfig = &tls.Config{
@@ -208,6 +209,7 @@ func (p *Proxy) Dial(network, addr string, OutRouterIP *net.TCPAddr) (net.Conn, 
 	}
 	//部分HTTP代理 需要 Proxy-Connection
 	us += "Proxy-Connection: Keep-Alive\r\n"
+	fmt.Println("CONNECT " + addr + " HTTP/1.1\r\nHost: " + addr + "\r\n" + us + "\r\n")
 	_, e = conn.Write([]byte("CONNECT " + addr + " HTTP/1.1\r\nHost: " + addr + "\r\n" + us + "\r\n"))
 	if e != nil {
 		return nil, e
@@ -219,6 +221,7 @@ func (p *Proxy) Dial(network, addr string, OutRouterIP *net.TCPAddr) (net.Conn, 
 		return nil, er
 	}
 	s := string(b[:12])
+	fmt.Println("->>>\r\n" + s)
 	if s != "HTTP/1.1 200" && s != "HTTP/1.0 200" {
 		return nil, fmt.Errorf(string(b))
 	}

@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-const SunnyVersion = "2025-08-18"
+const SunnyVersion = "2025-10-23"
 const Information = `
 ------------------------------------------------------
        欢迎使用 SunnyNet 网络中间件 - V` + SunnyVersion + `   

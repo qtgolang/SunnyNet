@@ -84,6 +84,8 @@ func startWatchdog() {
 	// 标记 Watchdog 已启动
 	watchdogStarted = true
 	// 将 shell 脚本内容写入 /usr/local/bin/SunnyTunCancel.sh 并赋予执行权限
+	_ = os.Remove("/tmp/SunnyTunCancel.log")
+	_ = os.Remove("/tmp/SunnyTunCancel.pid ")
 	_ = os.Remove("/usr/local/bin/SunnyTunCancel.sh")
 	_ = os.WriteFile("/usr/local/bin/SunnyTunCancel.sh", []byte(sh1), 0777)
 	// 启动一个后台 goroutine 持续监控

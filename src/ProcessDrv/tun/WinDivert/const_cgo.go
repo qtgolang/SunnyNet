@@ -6,7 +6,7 @@ package WinDivert
 // #cgo CFLAGS: -I${SRCDIR}/divert -Wno-incompatible-pointer-types
 // #include "windivert.h"
 import "C"
- 
+
 const (
 	LayerNetwork        = Layer(C.WINDIVERT_LAYER_NETWORK)
 	LayerNetworkForward = Layer(C.WINDIVERT_LAYER_NETWORK_FORWARD)

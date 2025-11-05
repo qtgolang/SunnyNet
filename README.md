@@ -1,15 +1,18 @@
 # Sunny网络中间件 SDK 文档
 
-<div align="center">
-  <svg xmlns="http://www.w3.org/2000/svg" width="210" height="20" role="img" aria-label="Platform: Windows | Linux | macOS"><title>Platform: Windows | Linux | macOS</title><linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient><clipPath id="r"><rect width="210" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#r)"><rect width="57" height="20" fill="#555"/><rect x="57" width="153" height="20" fill="#007ec6"/><rect width="210" height="20" fill="url(#s)"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110"><text aria-hidden="true" x="295" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="470">Platform</text><text x="295" y="140" transform="scale(.1)" fill="#fff" textLength="470">Platform</text><text aria-hidden="true" x="1325" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="1430">Windows | Linux | macOS</text><text x="1325" y="140" transform="scale(.1)" fill="#fff" textLength="1430">Windows | Linux | macOS</text></g></svg>
-  <svg xmlns="http://www.w3.org/2000/svg" width="78" height="20" role="img" aria-label="Go: >=1.16"><title>Go: >=1.16</title><linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient><clipPath id="r"><rect width="78" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#r)"><rect width="25" height="20" fill="#555"/><rect x="25" width="53" height="20" fill="#97ca00"/><rect width="78" height="20" fill="url(#s)"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110"><text aria-hidden="true" x="135" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="150">Go</text><text x="135" y="140" transform="scale(.1)" fill="#fff" textLength="150">Go</text><text aria-hidden="true" x="505" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="430">>=1.16</text><text x="505" y="140" transform="scale(.1)" fill="#fff" textLength="430">>=1.16</text></g></svg>
-  <svg xmlns="http://www.w3.org/2000/svg" width="82" height="20" role="img" aria-label="License: MIT"><title>License: MIT</title><linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient><clipPath id="r"><rect width="82" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#r)"><rect width="51" height="20" fill="#555"/><rect x="51" width="31" height="20" fill="#dfb317"/><rect width="82" height="20" fill="url(#s)"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110"><text aria-hidden="true" x="265" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="410">License</text><text x="265" y="140" transform="scale(.1)" fill="#fff" textLength="410">License</text><text aria-hidden="true" x="655" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="210">MIT</text><text x="655" y="140" transform="scale(.1)" fill="#fff" textLength="210">MIT</text></g></svg>
-</div>
+
+
+<div align="center"> <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue" alt="Platform: Windows | Linux | macOS"/> <img src="https://img.shields.io/badge/Go-%3E%3D1.16-green" alt="Go: >=1.16"/> <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License: MIT"/></div>
+ 
 
 <div align="center">
+
   <h3>跨平台网络分析组件 SDK</h3>
+
   <p>类似 Fiddler 的网络中间件，支持 HTTP/HTTPS/WS/WSS/TCP/UDP 网络分析</p>
+
 </div>
+
 
 ## 📌 重要通知
 

@@ -222,6 +222,9 @@ func (d *DevConn) SetWriteDeadline(t time.Time) error {
 }
 
 func (d *DevConn) PushClientPayload(payload []byte, seq uint32) {
+	if seq != d.clientNext {
+		return
+	}
 	defer func() {
 		d.mu.Lock()
 		clientNext := d.clientNext

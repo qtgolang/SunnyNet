@@ -2450,13 +2450,12 @@ func (s *Sunny) InstallCert() string {
 }
 
 // SetCert 设置证书
-func (s *Sunny) SetCert(ManagerId int) *Sunny {
-	Manager := Certificate.LoadCertificateContext(ManagerId)
+func (s *Sunny) SetCert(ManagerContext int) *Sunny {
+	Manager := Certificate.LoadCertificateContext(ManagerContext)
 	if Manager == nil {
 		s.Error = errors.New("CertificateManager invalid ")
 		return s
 	}
-
 	var err error
 	s.initCertOK = false
 	p, _ := pem.Decode([]byte(Manager.ExportCA()))

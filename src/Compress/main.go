@@ -9,6 +9,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 	"io"
 	"io/ioutil"
+	"strings"
 )
 
 var _null_bytes = make([]byte, 0)
@@ -110,4 +111,39 @@ func ZSTDDecompress(input []byte) []byte {
 	var decoder, _ = zstd.NewReader(nil, zstd.WithDecoderConcurrency(0))
 	a, _ := decoder.DecodeAll(input, nil)
 	return a
+}
+
+var decompressors = map[string]func([]byte) []byte{
+	"gzip":    GzipUnCompress,
+	"br":      BrUnCompress,
+	"deflate": DeflateUnCompress,
+	"zstd":    ZSTDDecompress,
+	"zlib":    ZlibUnCompress,
+}
+var encompressors = map[string]func([]byte) []byte{
+	"gzip":    GzipCompress,
+	"br":      BrCompress,
+	"deflate": DeflateCompress,
+	"zstd":    ZSTDCompress,
+	"zlib":    ZlibCompress,
+}
+
+// CompressAuto 自动压缩 仅支持 gzip、br、deflate、zstd、zlib 算法
+func CompressAuto(encoding string, data []byte) []byte {
+	if Compress, ok := encompressors[strings.ToLower(encoding)]; ok {
+		if compressed := Compress(data); len(compressed) > 0 {
+			return compressed
+		}
+	}
+	return nil
+}
+
+// UnCompressAuto 自动解压缩 仅支持 gzip、br、deflate、zstd、zlib 算法
+func UnCompressAuto(encoding string, data []byte) []byte {
+	if decompressor, ok := decompressors[strings.ToLower(encoding)]; ok {
+		if uncompressed := decompressor(data); len(uncompressed) > 0 {
+			return uncompressed
+		}
+	}
+	return nil
 }

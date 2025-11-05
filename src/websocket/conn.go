@@ -801,7 +801,9 @@ func (c *Conn) WriteMessage(messageType int, data []byte) error {
 	return w.Close()
 }
 func (c *Conn) WriteFullMessage(messageType int, data []byte) error {
-	if len(data) < cap(c.writeBuf) || (c.newCompressionWriter == nil || !c.enableWriteCompression) {
+	a1 := len(data) < cap(c.writeBuf)
+	a2 := !c.enableWriteCompression
+	if a1 || a2 {
 		return c.WriteMessage(messageType, data)
 	}
 	var mw messageWriter

@@ -109,7 +109,7 @@ done
 }
 
 // startWatchdog 启动路由恢复监控脚本（防止主进程异常退出导致网络不恢复）
-func startWatchdog() {   // 定义 startWatchdog 函数
+func startWatchdog() { // 定义 startWatchdog 函数
 	if watchdogStarted { // 如果已启动
 		return // 直接返回
 	}

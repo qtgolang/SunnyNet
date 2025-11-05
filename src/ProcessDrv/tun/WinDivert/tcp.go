@@ -4,7 +4,6 @@
 package WinDivert
 
 import (
-	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/qtgolang/SunnyNet/src/ProcessDrv/ProcessCheck"
@@ -19,11 +18,7 @@ var (
 	sessionsMu sync.Mutex
 	sessions   = make(map[uint16]*DevConn)
 )
-
-func sessKey(ip net.IP, port uint16) string {
-	return ip.String() + ":" + fmt.Sprint(port)
-}
-
+ 
 type expiry struct {
 	pid    int32
 	name   string
@@ -68,8 +63,11 @@ func getPidByPort(kind string, port uint16) (int32, string) {
 
 var loopbackV4 = net.IPv4(127, 0, 0, 1)
 var loopbackV6 = net.IPv6loopback
+var mm sync.Mutex
 
 func (d *Divert) handleCommand(h *Handle, data []byte, addr *Address, tcp *layers.TCP, clientIP, serverIP net.IP, clientPort, serverPort uint16, v4 bool) {
+	mm.Lock()
+	defer mm.Unlock()
 	if !addr.Outbound() || (clientIP.Equal(serverIP) && (serverIP.Equal(loopbackV4) || serverIP.Equal(loopbackV6))) {
 		_, _ = h.Send(data, addr)
 		return
@@ -130,19 +128,17 @@ func (d *Divert) handleCommand(h *Handle, data []byte, addr *Address, tcp *layer
 		return
 	}
 
-	if tcp.ACK && !tcp.SYN && len(tcp.Payload) == 0 {
-		return
-	}
 	// 处理 payload：写入 devConn 并向内核注入 ACK（告知 we've consumed bytes）
 	if len(tcp.Payload) > 0 {
-		fmt.Println(string(tcp.Payload))
 		// 写入 session buffer 并更新 clientNext
 		sess.PushClientPayload(tcp.Payload, tcp.Seq)
 		return
 	}
-
+	sess.mu.Lock()
+	sess.clientNext = tcp.Seq
+	sess.mu.Unlock()
 	// 其他情况原样放行
-	_, _ = h.Send(data, addr)
+	//_, _ = h.Send(data, addr)
 	return
 }
 func (d *Divert) handleIPv4(h *Handle, data []byte, addr *Address, ip4 *layers.IPv4, pkt gopacket.Packet) bool {

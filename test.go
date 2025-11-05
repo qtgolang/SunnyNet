@@ -3,27 +3,12 @@ package main
 import "C"
 import (
 	"fmt"
-	"github.com/qtgolang/SunnyNet/Api"
 	"github.com/qtgolang/SunnyNet/SunnyNet"
-	"github.com/qtgolang/SunnyNet/src/dns"
 	"github.com/qtgolang/SunnyNet/src/encoding/hex"
 	"github.com/qtgolang/SunnyNet/src/public"
 	"log"
-	"os"
 )
 
-func wss() {
-	defer os.Exit(0)
-	dns.SetDnsServer("remote")
-	id := Api.CreateHTTPClient()
-	Api.HTTPSetProxyIP(id, "http://:@183.146.240.245:13477")
-	Api.HTTPOpen(id, "GET", "https://www.baidu.com/s")
-	Api.HTTPSetHeader(id, "host", "www.baidu.com")
-	Api.HTTPSendBin(id, []byte(""))
-
-	fmt.Println(Api.HTTPGetCode(id))
-
-}
 func Test() {
 	//wss()
 	var Sunny = SunnyNet.NewSunny()
@@ -38,7 +23,6 @@ func Test() {
 		Sunny.AddHttpCertificate("api.vlightv.com", cert, SunnyNet.HTTPCertRules_Request)
 
 	*/
-
 	/*
 		log := func(Context int, info ...any) {
 			fmt.Println("x脚本日志", fmt.Sprintf("%v", info))
@@ -122,8 +106,8 @@ func Test() {
 	//Sunny.SetGlobalProxy("http://abc9068377_mdse-zone-abc:11223344@b062e1016fa4e9c4.abcproxy.vip:4950", 60000)
 	//if Sunny.OpenDrive(2) {
 	Sunny.ProcessAddName("as5.exe")
-	//Sunny.ProcessAddName("com.apple.WebKit.Networking")
-	Sunny.ProcessAddName("go_build_VxOCR.exe")
+	Sunny.ProcessAddName("chrome.exe")
+	//Sunny.ProcessAddName("WeChatAppEx.exe")
 	//Sunny.ProcessALLName(true, false)
 	//}
 	//fmt.Println(Sunny.SetIEProxy())
@@ -137,13 +121,8 @@ func Test() {
 	//阻止程序退出
 	select {}
 }
-func updateLog() {
-	//2025-07-16 修复 GET 请求，可能导致服务器出现响应501：https://c1-nuwa.lefile.cn/t_/cn_zh/version/css/aaa13d3c3f1d2708624c179cbba4e8bb.css
-	//2025-07-19 修复 WSS 可能异常断开
-	//2025-07-26 修复 开启强制TCP 无法访问脚本编辑
-	//2025-07-26 优化 脚本编辑
-}
 func HttpCallback(Conn SunnyNet.ConnHTTP) {
+	return
 	switch Conn.Type() {
 	case public.HttpSendRequest: //发起请求
 		fmt.Println("发起请求", Conn.URL(), Conn.Proto(), Conn.GetProcessName())
@@ -184,7 +163,6 @@ func WSCallback(Conn SunnyNet.ConnWebSocket) {
 	}
 }
 func TcpCallback(Conn SunnyNet.ConnTCP) {
-	return
 	switch Conn.Type() {
 	case public.SunnyNetMsgTypeTCPAboutToConnect: //即将连接
 		mode := string(Conn.Body())
@@ -193,23 +171,24 @@ func TcpCallback(Conn SunnyNet.ConnTCP) {
 		//Conn.SetNewAddress("8.8.8.8:8080")
 		return
 	case public.SunnyNetMsgTypeTCPConnectOK: //连接成功
-		log.Println("PID", Conn.PID(), "TCP 连接到:", Conn.LocalAddress(), "->", Conn.RemoteAddress(), "成功")
+		//log.Println("PID", Conn.PID(), "TCP 连接到:", Conn.LocalAddress(), "->", Conn.RemoteAddress(), "成功")
 		return
 	case public.SunnyNetMsgTypeTCPClose: //连接关闭
-		log.Println("PID", Conn.PID(), "TCP 断开连接:", Conn.LocalAddress(), "->", Conn.RemoteAddress())
+		//log.Println("PID", Conn.PID(), "TCP 断开连接:", Conn.LocalAddress(), "->", Conn.RemoteAddress())
 		return
 	case public.SunnyNetMsgTypeTCPClientSend: //客户端发送数据
-		log.Println("PID", Conn.PID(), "TCP 发送数据", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.Type(), Conn.BodyLen(), len(Conn.Body()))
+		//log.Println("PID", Conn.PID(), "TCP 发送数据", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.Type(), Conn.BodyLen(), len(Conn.Body()))
 		return
 	case public.SunnyNetMsgTypeTCPClientReceive: //客户端收到数据
 
-		log.Println("PID", Conn.PID(), "收到数据", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.Type(), Conn.BodyLen(), len(Conn.Body()))
+		//log.Println("PID", Conn.PID(), "收到数据", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.Type(), Conn.BodyLen(), len(Conn.Body()))
 		return
 	default:
 		return
 	}
 }
 func UdpCallback(Conn SunnyNet.ConnUDP) {
+	return
 	switch Conn.Type() {
 	case public.SunnyNetUDPTypeSend: //客户端向服务器端发送数据
 		log.Println("PID", Conn.PID(), Conn.GetProcessName(), "发送UDP", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.BodyLen())

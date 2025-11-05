@@ -26,6 +26,7 @@ type CertManager struct {
 	PrivateKey   string
 	Certificates string
 	Cert         string
+	context      int
 }
 
 var Lock sync.Mutex
@@ -37,6 +38,7 @@ func CreateCertificate() int {
 	w := &CertManager{Tls: &tls.Config{}}
 	Context := NewMessageId()
 	Map[Context] = w
+	w.context = Context
 	return Context
 }
 
@@ -51,7 +53,14 @@ func RemoveCertificate(Context int) {
 	c = nil
 	delete(Map, Context)
 }
-
+func (c *CertManager) Context() int {
+	Lock.Lock()
+	defer Lock.Unlock()
+	if c.context == 0 {
+		c.context = NewMessageId()
+	}
+	return c.context
+}
 func LoadCertificateContext(Context int) *CertManager {
 	s := Map[Context]
 	if s == nil {

@@ -1,205 +1,120 @@
+# Sunny网络中间件 SDK 文档
 
-<div style="text-align: center;"><h3><a style="color: red;">请注意:由于本仓库历史记录太大</a></div></h3></center>
-<div style="text-align: center;"><h3><a style="color: red;">本仓库于 2025-04-24 删除重建</a></div></h3></center>
+<div align="center">
+  <svg xmlns="http://www.w3.org/2000/svg" width="210" height="20" role="img" aria-label="Platform: Windows | Linux | macOS"><title>Platform: Windows | Linux | macOS</title><linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient><clipPath id="r"><rect width="210" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#r)"><rect width="57" height="20" fill="#555"/><rect x="57" width="153" height="20" fill="#007ec6"/><rect width="210" height="20" fill="url(#s)"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110"><text aria-hidden="true" x="295" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="470">Platform</text><text x="295" y="140" transform="scale(.1)" fill="#fff" textLength="470">Platform</text><text aria-hidden="true" x="1325" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="1430">Windows | Linux | macOS</text><text x="1325" y="140" transform="scale(.1)" fill="#fff" textLength="1430">Windows | Linux | macOS</text></g></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="78" height="20" role="img" aria-label="Go: >=1.16"><title>Go: >=1.16</title><linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient><clipPath id="r"><rect width="78" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#r)"><rect width="25" height="20" fill="#555"/><rect x="25" width="53" height="20" fill="#97ca00"/><rect width="78" height="20" fill="url(#s)"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110"><text aria-hidden="true" x="135" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="150">Go</text><text x="135" y="140" transform="scale(.1)" fill="#fff" textLength="150">Go</text><text aria-hidden="true" x="505" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="430">>=1.16</text><text x="505" y="140" transform="scale(.1)" fill="#fff" textLength="430">>=1.16</text></g></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="82" height="20" role="img" aria-label="License: MIT"><title>License: MIT</title><linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient><clipPath id="r"><rect width="82" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#r)"><rect width="51" height="20" fill="#555"/><rect x="51" width="31" height="20" fill="#dfb317"/><rect width="82" height="20" fill="url(#s)"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110"><text aria-hidden="true" x="265" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="410">License</text><text x="265" y="140" transform="scale(.1)" fill="#fff" textLength="410">License</text><text aria-hidden="true" x="655" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="210">MIT</text><text x="655" y="140" transform="scale(.1)" fill="#fff" textLength="210">MIT</text></g></svg>
+</div>
+
+<div align="center">
+  <h3>跨平台网络分析组件 SDK</h3>
+  <p>类似 Fiddler 的网络中间件，支持 HTTP/HTTPS/WS/WSS/TCP/UDP 网络分析</p>
+</div>
+
+## 📌 重要通知
+
+<div align="center">
+  <h3><span style="color: red;">请注意: 由于本仓库历史记录太大</span></h3>
+  <h3><span style="color: red;">本仓库于 2025-04-24 删除重建</span></h3>
+</div>
+
+## 🌟 项目简介
+
+Sunny网络中间件是一个功能强大的跨平台网络分析组件，专为二次开发而设计。它提供了完整的网络流量捕获和修改功能，支持多种协议类型。
+
+## 🚀 主要特性
+
+- ✅ **多协议支持**: HTTP/HTTPS/WS/WSS/TCP/UDP 网络分析
+- ✅ **数据获取与修改**: 可获取和修改所有协议的发送及返回数据
+- ✅ **代理设置**: 可为指定连接设置独立代理
+- ✅ **连接重定向**: 支持 HTTP/HTTPS/WS/WSS/TCP/TLS-TCP 链接重定向
+- ✅ **数据解码**: 支持 gzip, deflate, br, zstd 解码
+- ✅ **主动发送**: 支持 WS/WSS/TCP/TLS-TCP/UDP 主动发送数据
+- ✅ **跨平台**: 支持 Windows、Linux 和 macOS
+- ✅ **脚本支持**: 支持通过Go脚本自定义处理逻辑
+
+## 🚦 多驱动支持
+
+| 驱动名称 | 平台 | 127.0.0.1捕获 | 内网捕获 | 兼容性 |
+|---------|------|-------------|------|-------|
+| Netfilter | Windows | ✅ | ✅    | 一般 |
+| Proxifier | Windows | ✅ | ✅    | 一般 |
+| Tun(WinDivert) | Windows | ❌ | ✅    | 较好 |
+| Tun(VPN) | Android | ✅ | ✅    | 较好 |
+| Tun(utun) | MacOs | ❌ | ❌    | 较好 |
+| Tun(tun) | Linux | ❌ | ❌    | 较好 |
+
+## 📚 SDK API 参考
+
+
+
+有关Go语言环境下使用SunnyNet的详细示例，请参考 [Go语言使用示例](README_go.md) 文档。
+
+
+
+完整的API参考文档请查看 [API参考文档](README_api.md)。
+
+
+## ⚙️ 使用说明
+
+### 系统要求
+
+- Windows 7 及以上版本（使用 Go 1.21 以下版本编译）
+- Windows 10/11 推荐（支持最新 Go 版本）
+- Linux / macOS 最新稳定版本
  
-#  <center><h3>Sunny网络中间件</center></h3></center>
-
----
-
-> Sunny网络中间件 和 Fiddler 类似。 是可跨平台的网络分析组件
- ```log 
- 可用于HTTP/HTTPS/WS/WSS/TCP/UDP网络分析 为二次开发量身制作
  
- 支持 获取/修改 HTTP/HTTPS/WS/WSS/TCP/TLS-TCP/UDP 发送及返回数据
+## 🛠 编译说明
+
+### Windows 编译步骤
+
+1. 安装 [TDM-GCC](https://github.com/jmeubank/tdm-gcc/releases/download/v10.3.0-tdm64-2/tdm64-gcc-10.3.0-2.exe)
+2. 进入到 SunnyNet 目录
+3. 执行命令 `.\BuildLibrary\BuildALL.bat`
+
+### Linux 编译步骤
+
+1. 确保已安装 GCC 工具链
+2. 进入到 SunnyNet 目录
+3. 执行命令 `.\BuildLibrary\Linux64.sh`
+4. 或 执行命令 `.\BuildLibrary\Linux32.sh`
+
+### macOS 编译步骤
+
+1. 确保已安装 GCC 工具链
+2. 进入到 SunnyNet 目录
+3. 执行命令 `.\BuildLibrary\MacOs_amd64.sh`
+4. 或 执行命令 `.\BuildLibrary\MacOs_arm64.sh`
  
- 支持 对 HTTP/HTTPS/WS/WSS 指定连接使用指定代理
+
+## 📨 BUG 反馈与技术支持 
+<p>项目网站: <a href="https://esunny.vip/">https://esunny.vip/</a></p>
  
- 支持 对 HTTP/HTTPS/WS/WSS/TCP/TLS-TCP 链接重定向
- 
- 支持 gzip, deflate, br, zstd 解码
- 
- 支持 WS/WSS/TCP/TLS-TCP/UDP 主动发送数据 
- 
-```
+<p><strong>QQ群:</strong></p>
 
----
-* # 由于代码主要是做DLL使用,部分功能未封装给Go使用，请自行探索！
-* # 如需支持Win7系统
-* # 请使用Go1.21以下版本编译,例如 go 1.20.4版本 
-* # <a href="https://github.com/jmeubank/tdm-gcc/releases/download/v10.3.0-tdm64-2/tdm64-gcc-10.3.0-2.exe">编译请使用 TDM-GCC</a>
-<div style="text-align: center;"><h2><a style="color: red;">BUG 反馈</a></h2></div>
-<div style="text-align: center;"><h3>QQ群:</h3></div>
-<div style="text-align: center;"><h3>一群：751406884</h3></div>
-<div style="text-align: center;"><h3>二群：545120699</h3></div>
-<div style="text-align: center;"><h3>三群：170902713</h3></div>
-<div style="text-align: center;"><h3>四群：1070797457</h3></div>
-<div style="text-align: center;"><h3>网址：<a href="https://esunny.vip/">https://esunny.vip/</a></h3></div>
+<ul>
 
----
+  <li>一群：751406884</li>
 
-### <center><h3>各语言,示例文件以及抓包工具 下载地址 </center>
-<div style="text-align: center;"><h3>https://wwxa.lanzouu.com/b02p4aet8j</h3></div>
-<div style="text-align: center;"><h3>密码:4h7r</h3></div>
-<div style="text-align: center;"><h3></h3></div>
+  <li>二群：545120699</li>
+
+  <li>三群：170902713</li>
+
+  <li>四群：1070797457</li>
+
+</ul>
+
+## 📦 下载资源
 
 
----
-- > GoLang使用示例代码
 
-```golang
-package main
+<p>各语言示例文件以及抓包工具下载地址:</p>
 
-import (
-	"github.com/qtgolang/SunnyNet/SunnyNet"
-	"github.com/qtgolang/SunnyNet/src/public"
-	"time"
-	"log"
-	"fmt"
-)
-func main() {
-	var Sunny = SunnyNet.NewSunny()
-	/*
-		//载入自定义证书
-		cert := SunnyNet.NewCertManager()
-		ok := cert.LoadP12Certificate("C:\\Users\\Qin\\Desktop\\Cert\\ca6afc5aa40fcbd3.p12", "GXjc75IRAO0T")
-		fmt.Println("载入P12:", ok)
-		fmt.Println("证书名称：", cert.GetCommonName())
+<p>🔗 <a href="https://wwxa.lanzouu.com/b02p4aet8j">https://wwxa.lanzouu.com/b02p4aet8j</a></p>
 
-		//给指定域名使用这个证书
-		Sunny.AddHttpCertificate("api.vlightv.com", cert, SunnyNet.HTTPCertRules_Request)
+<p><strong>密码:</strong> 4h7r</p>
 
-	*/
+## ⚠️ 注意事项
 
-	/*
-		log := func(Context int, info ...any) {
-			fmt.Println("x脚本日志", fmt.Sprintf("%v", info))
-		}
-		save := func(Context int, code []byte) {
-			//在这里将code代码 储存到文件，下次启动时，载入恢复
-		}
-		Sunny.SetScriptCall(log, save)
-		//载入上次保存的脚本代码
-		Sunny.SetScriptCode(string(GoScriptCode.DefaultCode))
-	*/
-
-	/*
-		//设置全局上游代理
-		Sunny.SetGlobalProxy("socket://192.168.31.1:4321", 60000)
-
-		//指定IP或域名不使用全局的上游代理
-		Sunny.CompileProxyRegexp("127.0.0.1;[::1];192.168.*;*.baidu.com")
-	*/
-
-	/*
-		//开启强制走TCP,开启后 https 将不会解密 直接转发数据流量
-		Sunny.MustTcp(true)
-	*/
-	/*
-		//禁止TCP，所有TCP流量将直接断开连接
-		Sunny.DisableTCP(true)
-	*/
-
-	/*
-		//设置强制走TCP规则，使用这个函数后 就不要使用 Sunny.MustTcp(true) 否则这个函数无效
-		Sunny.SetMustTcpRegexp("tpstelemetry.tencent.com", true)
-	*/
-	/*
-		//使用驱动抓包 (两个驱动各有特点自行尝试,哪个能用/好用 用哪个)
-		Sunny.OpenDrive(true)  // 使用 NFAPI 驱动
-		Sunny.OpenDrive(false) // 使用 Proxifier 驱动 不支持32位操作系统，不支持UDP数据捕获
-
-		Sunny.ProcessAddName("gamemon.des") //添加指定进程名称
-		Sunny.ProcessDelName("gamemon.des") //删除已添加的指定进程名称
-		Sunny.ProcessAddPid(1122)		    //添加指定进程PID
-		Sunny.ProcessDelPid(1122)		    //删除已添加的指定进程PID
-		Sunny.ProcessCancelAll()			//删除已添加的所有进程名称/PID
-		Sunny.ProcessALLName(true, false)	//捕获全部进程开始后，添加进程名称-PID无效
-	*/
-	//设置回调地址
-	Sunny.SetGoCallback(HttpCallback, TcpCallback, WSCallback, UdpCallback)
-	Port := 2025
-	Sunny.SetPort(Port).Start()
-	err := Sunny.Error
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Run Port=", Port)
-	//阻止程序退出
-	select {}
-}
-
-func HttpCallback(Conn SunnyNet.ConnHTTP) {
-
-	if Conn.Type() == public.HttpSendRequest {
-		//fmt.Println(Conn.URL())
-		//发起请求
-
-		//直接响应,不让其发送请求
-		//Conn.StopRequest(200, "Hello Word")
-
-	} else if Conn.Type() == public.HttpResponseOK {
-		//请求完成
-		//log.Println("Call", Conn.URL())
-	} else if Conn.Type() == public.HttpRequestFail {
-		//请求错误
-		/*	fmt.Println(Conn.Request.URL.String(), Conn.GetError())
-		 */
-	}
-}
-func WSCallback(Conn SunnyNet.ConnWebSocket) {
-	log.Println("WebSocket", Conn.URL())
-}
-func TcpCallback(Conn SunnyNet.ConnTCP) {
-
-	if Conn.Type() == public.SunnyNetMsgTypeTCPAboutToConnect {
-		//即将连接
-		mode := string(Conn.Body())
-		log.Println("PID", Conn.PID(), "TCP 即将连接到:", mode, Conn.LocalAddress(), "->", Conn.RemoteAddress())
-		//修改目标连接地址
-		//Conn.SetNewAddress("8.8.8.8:8080")
-		return
-	}
-
-	if Conn.Type() == public.SunnyNetMsgTypeTCPConnectOK {
-		log.Println("PID", Conn.PID(), "TCP 连接到:", Conn.LocalAddress(), "->", Conn.RemoteAddress(), "成功")
-		return
-	}
-
-	if Conn.Type() == public.SunnyNetMsgTypeTCPClose {
-		log.Println("PID", Conn.PID(), "TCP 断开连接:", Conn.LocalAddress(), "->", Conn.RemoteAddress())
-		return
-	}
-	if Conn.Type() == public.SunnyNetMsgTypeTCPClientSend {
-		log.Println("PID", Conn.PID(), "发送数据", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.Type(), Conn.BodyLen(), Conn.Body())
-		return
-	}
-	if Conn.Type() == public.SunnyNetMsgTypeTCPClientReceive {
-		log.Println("PID", Conn.PID(), "收到数据", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.Type(), Conn.BodyLen(), Conn.Body())
-		return
-	}
-}
-func UdpCallback(Conn SunnyNet.ConnUDP) {
-
-	if Conn.Type() == public.SunnyNetUDPTypeSend {
-		//客户端向服务器端发送数据
-		log.Println("PID", Conn.PID(), "发送UDP", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.BodyLen())
-		//修改发送的数据
-		//Conn.SetBody([]byte("Hello Word"))
-
-		return
-	}
-	if Conn.Type() == public.SunnyNetUDPTypeReceive {
-		//服务器端向客户端发送数据
-		log.Println("PID", Conn.PID(), "接收UDP", Conn.LocalAddress(), Conn.RemoteAddress(), Conn.BodyLen())
-		//修改响应的数据
-		//Conn.SetBody([]byte("Hello Word"))
-		return
-	}
-	if Conn.Type() == public.SunnyNetUDPTypeClosed {
-
-		log.Println("PID", Conn.PID(), "关闭UDP", Conn.LocalAddress(), Conn.RemoteAddress())
-		return
-	}
-
-}
-```
+1. 如需支持 Win7 系统，请使用 Go 1.21 以下版本编译，例如 go 1.20.4 版本
+2. <a href="https://github.com/jmeubank/tdm-gcc/releases/download/v10.3.0-tdm64-2/tdm64-gcc-10.3.0-2.exe">编译请使用 TDM-GCC</a>

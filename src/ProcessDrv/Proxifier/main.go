@@ -55,11 +55,11 @@ func Call(hPipe C.HANDLE, raw uintptr) {
 		mu.Unlock()
 		return
 	}
+	mu.Unlock()
 	fileName := filepath.Base(path)
 	if ProcessCheck.CheckPidByName(int32(__pid), fileName) {
 		return
 	}
-	mu.Unlock()
 	family := int16(binary.LittleEndian.Uint16(CStringToBytes(raw+0x419, 2)))
 	if family == 0 {
 		WriteData := make([]byte, 1020)

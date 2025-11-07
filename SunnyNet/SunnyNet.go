@@ -27,6 +27,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/textproto"
 	"net/url"
 	"regexp"
 	"runtime"
@@ -860,7 +861,7 @@ func (s *proxyRequest) httpProcessing(aheadData []byte, Tag string) {
 		return
 	}
 	Method := public.GetMethod(hh)
-	if public.IsHttpMethod(Method) {
+	if Method != public.NULL {
 		var buff bytes.Buffer
 		buff.Write(aheadData)
 		var isRules bool
@@ -899,8 +900,8 @@ func (s *proxyRequest) httpProcessing(aheadData []byte, Tag string) {
 				if s.RwObj.Buffered() == 0 {
 					break
 				}
-				// 设置 10 毫秒超时
-				_ = s.RwObj.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+				// 设置 100 毫秒超时
+				_ = s.RwObj.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 				// 读取数据
 				n, err := s.RwObj.Read(tmpBuf)
 				if err != nil || n == 0 {
@@ -1723,6 +1724,54 @@ func (s *Sunny) tcpRules(server, Host string, dns ...string) bool {
 	}
 	return true
 }
+func isSensitiveHeader(header string) bool {
+	ar1 := []string{
+		"Set-Cookie",    // Cookie 控制：浏览器存储时对大小写敏感
+		"Vary",          // 缓存控制，CDN/代理依赖此字段精确匹配
+		"ETag",          // 缓存验证，区分大小写的唯一标识
+		"Authorization", // 认证头，安全代理通常严格区分
+		"Cookie",        // 请求头中，部分反代大小写敏感
+		"Host",          // 虽然规范不敏感，但实际代理会严格要求
+		"Connection",    // HTTP/1.1 中用于连接管理
+		"Upgrade",       // HTTP 升级协议时要求精确
+		"TE",            // 传输编码扩展标识
+		"Date",          // 时间戳标准字段
+		"Allow",         // 指定资源允许的 HTTP 方法
+		"location",      // 重定向
+	}
+	ar2 := []string{
+		"Content-",          // Content-Type / Content-Length / Content-Encoding / Content-Disposition / Content-Language / Content-Security-Policy
+		"Access-Control-",   // CORS 响应头：Allow-Origin / Allow-Headers / Allow-Methods / Allow-Credentials
+		"If-",               // 条件请求头：If-Modified-Since / If-None-Match / If-Match / If-Range
+		"Cache-",            // Cache-Control / Cache-Status / Cache-Tag
+		"Last-",             // Last-Modified
+		"Transfer-",         // Transfer-Encoding
+		"Upgrade-",          // Upgrade-Insecure-Requests
+		"Referrer-",         // Referrer-Policy
+		"Permissions-",      // Permissions-Policy
+		"Strict-Transport-", // Strict-Transport-Security
+		"Proxy-",            // Proxy-Authenticate / Proxy-Authorization
+		"WWW-",              // WWW-Authenticate
+		"X-",                // X-Frame-Options / X-Content-Type-Options / X-XSS-Protection / X-DNS-Prefetch-Control
+		"Report-",           // Report-To / Reporting-Endpoints（安全报告头）
+		"Cross-Origin-",     // Cross-Origin-Embedder-Policy / Cross-Origin-Resource-Policy / Cross-Origin-Opener-Policy
+		"Origin-",           // Origin-Agent-Cluster
+		"Sec-",              // 浏览器安全头（如 Sec-Fetch-Site / Sec-Fetch-Mode / Sec-Ch-Ua）
+		"Keep-",             // Keep-Alive
+		"HTTP2-",            // HTTP2-Strings
+	}
+	for _, h := range ar1 {
+		if strings.EqualFold(header, h) {
+			return true
+		}
+	}
+	for _, prefix := range ar2 {
+		if strings.HasPrefix(strings.ToLower(header), strings.ToLower(prefix)) {
+			return true
+		}
+	}
+	return false
+}
 func (s *proxyRequest) CompleteRequest(req *http.Request) {
 	//储存 要发送的请求体
 	s.Request = req
@@ -1794,7 +1843,6 @@ func (s *proxyRequest) CompleteRequest(req *http.Request) {
 			}
 		}
 	}
-
 	//回调中设置 不发送 直接响应指定数据 或终止发送
 	if s.Response.Response != nil {
 		s.Response.ServerIP = fmt.Sprintf("%s:%d", "127.0.0.1", s.Global.port)
@@ -1811,7 +1859,15 @@ func (s *proxyRequest) CompleteRequest(req *http.Request) {
 	//为了保证在请求完成时,还能获取到到请求的提交信息,先备份数据
 	bakBytes := s.Request.GetData()
 	err := s.doRequest()
-
+	if s.Response.Response != nil && s.Response.Header != nil && !strings.EqualFold(s.Request.Proto, http.H2Proto) {
+		aa := s.Response.Header.Clone()
+		for k, v := range aa {
+			if isSensitiveHeader(k) {
+				s.Response.Header.Del(k)
+				s.Response.Header[textproto.CanonicalMIMEHeaderKey(k)] = v
+			}
+		}
+	}
 	//为了保证在请求完成时,还能获取到到请求的提交信息,这里还原数据
 	s.Request.SetData(bakBytes)
 	defer func() {

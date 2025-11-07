@@ -229,9 +229,7 @@ func (s *proxyRequest) CallbackBeforeResponse() {
 		return
 	}
 	pid, _ := strconv.Atoi(s.Pid)
-
 	MessageId := NewMessageId()
-
 	messageIdLock.Lock()
 	httpStorage[MessageId] = s
 	messageIdLock.Unlock()

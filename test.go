@@ -98,7 +98,7 @@ func Test() {
 	Sunny.SetGoCallback(HttpCallback, TcpCallback, WSCallback, UdpCallback)
 	Port := 2021
 	Sunny.SetPort(Port).Start()
-	fmt.Println(Sunny.OpenDrive(2))
+	//fmt.Println(Sunny.OpenDrive(2))
 	//Sunny.ProcessALLName(true, false)
 	//Sunny.ProcessAddName("___go_build_udpTest.exe")
 	//Sunny.MustTcp(true)
@@ -122,7 +122,6 @@ func Test() {
 	select {}
 }
 func HttpCallback(Conn SunnyNet.ConnHTTP) {
-	return
 	switch Conn.Type() {
 	case public.HttpSendRequest: //发起请求
 		fmt.Println("发起请求", Conn.URL(), Conn.Proto(), Conn.GetProcessName())

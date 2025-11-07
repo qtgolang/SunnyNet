@@ -3,6 +3,7 @@ package ReadWriteObject
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"net"
 	"time"
 )
@@ -21,6 +22,21 @@ type ReadWriteObject struct {
 	Hook *bytes.Buffer
 }
 
+func (w *ReadWriteObject) ReadSlice(delim byte) ([]byte, error) {
+	var lineBuf []byte
+	for {
+		bs, e := w.Reader.ReadSlice(delim)
+		lineBuf = append(lineBuf, bs...) // 直接追加
+		if e == nil {                    // 正常读完一行
+			return lineBuf, nil
+		}
+		if errors.Is(e, bufio.ErrBufferFull) {
+			continue // 行太长，继续读
+		}
+		// 其他错误，返回当前已读数据
+		return lineBuf, e
+	}
+}
 func (w *ReadWriteObject) LocalAddr() net.Addr {
 	return w.c.LocalAddr()
 }

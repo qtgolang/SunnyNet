@@ -5,8 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/qtgolang/SunnyNet/src/crypto/tls"
-	"github.com/qtgolang/SunnyNet/src/public"
 	"math/rand"
 	"net"
 	"os"
@@ -14,6 +12,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/qtgolang/SunnyNet/src/SunnyProxy"
+	"github.com/qtgolang/SunnyNet/src/crypto/tls"
 )
 
 var dnsConfig = &tls.Config{
@@ -224,7 +225,6 @@ func lookupIP(host string, proxy string, outRouterIP *net.TCPAddr, Dial func(net
 	resolver.time = time.Now()
 	dnsLock.Unlock()
 	_ips_, _err := resolver.rs.LookupIP(context.Background(), Net, host)
-	fmt.Println("ips", _ips_, Net)
 	_ips := deepCopyIPs(_ips_)
 	if len(_ips) > 0 {
 		t := &rsIps{ips: _ips, time: time.Now()}
@@ -251,30 +251,16 @@ func localLookupIP(host, proxyHost string, outRouterIP *net.TCPAddr) ([]net.IP, 
 	dnsLock.Unlock()
 	var _ips []net.IP
 	var _err error
-	mip := public.RouterIPInspect(outRouterIP)
-	if mip != nil {
-		DefaultResolver := &net.Resolver{
-			PreferGo: true,
-			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
-				var dialer net.Dialer
-				if strings.Contains(network, "tcp") {
-					dialer.LocalAddr = &net.TCPAddr{
-						IP:   mip,
-						Port: 0,
-					}
-				} else {
-					dialer.LocalAddr = &net.UDPAddr{
-						IP:   mip,
-						Port: 0,
-					}
-				}
-				return dialer.Dial(network, address)
-			},
-		}
-		_ips, _err = DefaultResolver.LookupIP(context.Background(), "ip", host)
-	} else {
-		_ips, _err = net.LookupIP(host)
+
+	DefaultResolver := &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			var ps SunnyProxy.Proxy
+			return ps.DialWithTimeout(network, address, 3*time.Second, outRouterIP)
+		},
 	}
+	_ips, _err = DefaultResolver.LookupIP(context.Background(), "ip", host)
+
 	_ips_ := deepCopyIPs(_ips)
 	if len(_ips_) > 0 {
 		t := &rsIps{ips: _ips_, time: time.Now()}

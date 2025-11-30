@@ -4,21 +4,23 @@
 package WinDivert
 
 import (
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
-	"github.com/qtgolang/SunnyNet/src/ProcessDrv/ProcessCheck"
-	CrossCompiled "github.com/qtgolang/SunnyNet/src/iphlpapi/net"
-	"github.com/shirou/gopsutil/process"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
+	"github.com/qtgolang/SunnyNet/src/ProcessDrv/ProcessCheck"
+	"github.com/qtgolang/SunnyNet/src/iphlpapi"
+	CrossCompiled "github.com/qtgolang/SunnyNet/src/iphlpapi/net"
+	"github.com/shirou/gopsutil/process"
 )
 
 var (
 	sessionsMu sync.Mutex
 	sessions   = make(map[uint16]*DevConn)
 )
- 
+
 type expiry struct {
 	pid    int32
 	name   string
@@ -68,11 +70,14 @@ var mm sync.Mutex
 func (d *Divert) handleCommand(h *Handle, data []byte, addr *Address, tcp *layers.TCP, clientIP, serverIP net.IP, clientPort, serverPort uint16, v4 bool) {
 	mm.Lock()
 	defer mm.Unlock()
-	if !addr.Outbound() || (clientIP.Equal(serverIP) && (serverIP.Equal(loopbackV4) || serverIP.Equal(loopbackV6))) {
+	if clientIP.Equal(serverIP) && (serverIP.Equal(loopbackV4) || serverIP.Equal(loopbackV6)) {
 		_, _ = h.Send(data, addr)
 		return
 	}
-
+	if !addr.Outbound() || iphlpapi.IsPortListening(int(clientPort)) {
+		_, _ = h.Send(data, addr)
+		return
+	}
 	// 只处理 SYN 或 TCP payload
 	// 处理 SYN（client 发起连接）
 	if tcp.SYN && !tcp.ACK {
@@ -82,7 +87,7 @@ func (d *Divert) handleCommand(h *Handle, data []byte, addr *Address, tcp *layer
 			return
 		}
 		// 创建会话并伪造 SYN/ACK 返回客户端
-		s := NewDevConn(h, clientIP, clientPort, serverIP, serverPort, v4, addr.Clone(), 0, 0)
+		s := NewDevConn(h, clientIP, clientPort, serverIP, serverPort, v4, addr.Clone(), tcp.Seq)
 		s.pid = uint32(pid)
 		sessionsMu.Lock()
 		sessions[clientPort] = s
@@ -113,30 +118,17 @@ func (d *Divert) handleCommand(h *Handle, data []byte, addr *Address, tcp *layer
 			_, _ = h.Send(data, addr)
 			return
 		}
-		h2 := NewDevConn(h, clientIP, clientPort, serverIP, serverPort, v4, addr.Clone(), tcp.Seq, tcp.Ack)
+		h2 := NewDevConn(h, clientIP, clientPort, serverIP, serverPort, v4, addr.Clone(), tcp.Seq)
 		_ = SendRstToClient(h, h2)
 		return
 	}
 	// 如果收到 FIN 或 RST，则清理 session 并放行
 	if tcp.FIN || tcp.RST {
 		_, _ = h.Send(data, addr) // 放行原始包（可选）
-		sessionsMu.Lock()
-		delete(sessions, clientPort)
-		sessionsMu.Unlock()
-		ProcessCheck.DelDevObj(clientPort)
 		_ = sess.Close()
 		return
 	}
-
-	// 处理 payload：写入 devConn 并向内核注入 ACK（告知 we've consumed bytes）
-	if len(tcp.Payload) > 0 {
-		// 写入 session buffer 并更新 clientNext
-		sess.PushClientPayload(tcp.Payload, tcp.Seq)
-		return
-	}
-	sess.mu.Lock()
-	sess.clientNext = tcp.Seq
-	sess.mu.Unlock()
+	sess.PushClientPayload(tcp.Payload, tcp.Seq)
 	// 其他情况原样放行
 	//_, _ = h.Send(data, addr)
 	return

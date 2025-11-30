@@ -14,6 +14,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/qtgolang/SunnyNet/src/ProcessDrv/SunnyNetUDP"
+	"github.com/qtgolang/SunnyNet/src/ProcessDrv/tun/tunPublic"
 	"github.com/qtgolang/SunnyNet/src/public"
 )
 
@@ -151,7 +152,13 @@ func (n *NewTun) handleUDP(srcIP, dstIP net.IP, udp *layers.UDP, v4 bool) {
 				return
 			}
 			LocalAddress := net.JoinHostPort(obj.ClientIP.String(), strconv.Itoa(int(obj.ClientPort)))
+			if tunPublic.IsLocalIp(obj.ClientIP) {
+				LocalAddress = net.JoinHostPort("127.0.0.1", strconv.Itoa(int(obj.ClientPort)))
+			}
 			RemoteAddress := net.JoinHostPort(obj.ServerIP.String(), strconv.Itoa(int(obj.ServerPort)))
+			if tunPublic.IsLocalIp(obj.ServerIP) {
+				RemoteAddress = net.JoinHostPort("127.0.0.1", strconv.Itoa(int(obj.ServerPort)))
+			}
 			bs := obj.callback(public.SunnyNetUDPTypeSend, obj.Theology, uint32(obj.pid), LocalAddress, RemoteAddress, Payload)
 			if len(bs) < 1 {
 				return
@@ -166,6 +173,13 @@ func (n *NewTun) handleUDP(srcIP, dstIP net.IP, udp *layers.UDP, v4 bool) {
 func (c *connEntry) loop() {
 	LocalAddress := net.JoinHostPort(c.ClientIP.String(), strconv.Itoa(int(c.ClientPort)))
 	RemoteAddress := net.JoinHostPort(c.ServerIP.String(), strconv.Itoa(int(c.ServerPort)))
+
+	if tunPublic.IsLocalIp(c.ClientIP) {
+		LocalAddress = net.JoinHostPort("127.0.0.1", strconv.Itoa(int(c.ClientPort)))
+	}
+	if tunPublic.IsLocalIp(c.ServerIP) {
+		RemoteAddress = net.JoinHostPort("127.0.0.1", strconv.Itoa(int(c.ServerPort)))
+	}
 	buff := make([]byte, 0xffff)
 	for {
 		_ = c.conn.SetReadDeadline(time.Now().Add(time.Duration(10) * time.Second))
@@ -187,6 +201,7 @@ func (c *connEntry) loop() {
 				c.ToClient(buff[:nt])
 				return
 			}
+
 			bs := c.callback(public.SunnyNetUDPTypeReceive, c.Theology, uint32(c.pid), LocalAddress, RemoteAddress, buff[:nt])
 			if len(bs) < 1 {
 				continue

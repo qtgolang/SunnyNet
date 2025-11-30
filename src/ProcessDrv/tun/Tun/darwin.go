@@ -23,6 +23,8 @@ import (
 	"github.com/songgao/water" // TUN 设备
 )
 
+func LogError(string) {}
+
 // 判断是否是 IPv4
 func isIPv4(ip net.IP) bool {
 	return ip.To4() != nil
@@ -85,7 +87,7 @@ func startWatchdog() {
 	watchdogStarted = true
 	// 将 shell 脚本内容写入 /usr/local/bin/SunnyTunCancel.sh 并赋予执行权限
 	_ = os.Remove("/tmp/SunnyTunCancel.log")
-	_ = os.Remove("/tmp/SunnyTunCancel.pid ")
+	_ = os.Remove("/tmp/SunnyTunCancel.pid")
 	_ = os.Remove("/usr/local/bin/SunnyTunCancel.sh")
 	_ = os.WriteFile("/usr/local/bin/SunnyTunCancel.sh", []byte(sh1), 0777)
 	// 启动一个后台 goroutine 持续监控
@@ -186,7 +188,7 @@ func (n *NewTun) OnTunCreated(_ int) bool {
 			}
 			// 如果读取出错或长度为 0，则稍等后重试
 			if er != nil || nBytes <= 0 {
-				time.Sleep(100 * time.Millisecond)
+				time.Sleep(10 * time.Millisecond)
 				continue
 			}
 			// 将读取到的数据拷贝到新切片中

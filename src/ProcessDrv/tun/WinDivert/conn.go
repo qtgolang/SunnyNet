@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/qtgolang/SunnyNet/src/ProcessDrv/ProcessCheck"
 )
 
 type DevConn struct {
@@ -44,6 +46,7 @@ type DevConn struct {
 	lastAddr *Address
 	v4       bool
 	pid      uint32
+	inChSeg  map[uint32][]byte
 }
 
 func (d *DevConn) GetRemoteAddress() string {
@@ -73,18 +76,17 @@ func (d *DevConn) ID() uint64 {
 }
 
 // 构造函数
-func NewDevConn(h *Handle, clientIP net.IP, clientPort uint16, serverIP net.IP, serverPort uint16, ipv4 bool, addr *Address, seq, ack uint32) *DevConn {
+func NewDevConn(h *Handle, clientIP net.IP, clientPort uint16, serverIP net.IP, serverPort uint16, ipv4 bool, addr *Address, seq uint32) *DevConn {
 	d := &DevConn{
-		clientIP:      clientIP,
-		clientPort:    clientPort,
-		serverIP:      serverIP,
-		serverPort:    serverPort,
-		dataCh:        make(chan struct{}, 1),
-		h:             h,
-		v4:            ipv4,
-		lastAddr:      addr,
-		serverSeqNext: seq,
-		clientNext:    ack,
+		clientIP:   clientIP,
+		clientPort: clientPort,
+		serverIP:   serverIP,
+		serverPort: serverPort,
+		dataCh:     make(chan struct{}, 1),
+		h:          h,
+		v4:         ipv4,
+		lastAddr:   addr,
+		clientNext: seq + 1,
 	}
 	d.serverISN = rand.Uint32()
 	d.serverSeqNext = d.serverISN + 1
@@ -147,7 +149,7 @@ func (d *DevConn) Write(b []byte) (int, error) {
 	if !d._outWrite.IsZero() && time.Now().After(d._outWrite) {
 		return 0, os.ErrDeadlineExceeded
 	}
-	n, err := SendDataToClient(d.h, d, b, d.lastAddr)
+	n, err := SendDataToClient(d, b)
 	return n, err
 }
 
@@ -162,6 +164,7 @@ func (d *DevConn) Close() error {
 	case d.dataCh <- struct{}{}:
 	default:
 	}
+	d.inChSeg = nil
 	d.mu.Unlock()
 	if already {
 		return nil
@@ -169,6 +172,10 @@ func (d *DevConn) Close() error {
 	if lastAddr != nil {
 		_ = SendFinToClient(d.h, d)
 	}
+	sessionsMu.Lock()
+	delete(sessions, d.clientPort)
+	sessionsMu.Unlock()
+	ProcessCheck.DelDevObj(d.clientPort)
 	return nil
 }
 
@@ -222,31 +229,76 @@ func (d *DevConn) SetWriteDeadline(t time.Time) error {
 }
 
 func (d *DevConn) PushClientPayload(payload []byte, seq uint32) {
-	if seq != d.clientNext {
-		return
-	}
+	// 递归式补齐乱序分片：当前分片处理完之后，再看缓存里有没有刚好接上的
 	defer func() {
 		d.mu.Lock()
-		clientNext := d.clientNext
-		d.mu.Unlock()
-		if clientNext != 0 {
-			_ = SendAckToKernel(d.h, d, clientNext, d.lastAddr)
+		for s, seg := range d.inChSeg {
+			// 过滤掉“比当前 clientNext 还早”的旧分片
+			if seqBefore(s, d.clientNext) {
+				delete(d.inChSeg, s)
+				continue
+			}
+			// 如果刚好是下一个期望 seq，就拿出来递归处理
+			if seqEqual(s, d.clientNext) {
+				delete(d.inChSeg, s)
+				// 递归调用前先解锁，避免死锁
+				d.mu.Unlock()
+				d.PushClientPayload(seg, s)
+				return
+			}
+			// 剩下的是“未来分片”，继续保留在 inChSeg 里
 		}
+		d.mu.Unlock()
 	}()
-	if len(payload) == 0 {
-		// 仍更新 seq
-		d.mu.Lock()
-		d.clientNext = seq + uint32(len(payload))
+	d.mu.Lock()
+	if d.closed {
 		d.mu.Unlock()
 		return
 	}
-	d.mu.Lock()
-	d.buff.Write(payload)
-	d.clientNext = seq + uint32(len(payload))
-	// 非阻塞通知
-	select {
-	case d.dataCh <- struct{}{}:
-	default:
+	// 严格按序接收：这里只处理“刚好等于期望 seq”的分片
+	if !seqEqual(seq, d.clientNext) {
+		// 如果是未来的 seq，先缓存起来，等缺失的分片到了再补
+		if seqAfter(seq, d.clientNext) {
+			if d.inChSeg == nil {
+				d.inChSeg = make(map[uint32][]byte)
+			}
+			// 这里直接覆盖同一 seq 的旧缓存，一般没有问题
+			d.inChSeg[seq] = payload
+		}
+		d.mu.Unlock()
+		return
 	}
+	needNotify := len(payload) > 0
+	if !needNotify {
+		d.mu.Unlock()
+		return
+	}
+	_, _ = d.buff.Write(payload)
+	d.clientNext = seq + uint32(len(payload))
+	clientNext := d.clientNext
 	d.mu.Unlock()
+	// 锁外发送 ACK
+	_ = SendAckToKernel(d.h, d, clientNext, d.lastAddr)
+	// 锁外通知
+	if needNotify {
+		select {
+		case d.dataCh <- struct{}{}:
+		default:
+		}
+	}
+}
+
+// 回绕安全：a 是否在 b 之后（a > b）,避免uint32溢出问题
+func seqAfter(a, b uint32) bool {
+	return int32(a-b) > 0
+}
+
+// 回绕安全：a 是否在 b 之前（a < b）,避免uint32溢出问题
+func seqBefore(a, b uint32) bool {
+	return int32(a-b) < 0
+}
+
+// 回绕安全：a == b,避免uint32溢出问题
+func seqEqual(a, b uint32) bool {
+	return a == b
 }

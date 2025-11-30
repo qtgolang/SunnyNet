@@ -5,7 +5,13 @@ package Tun
 
 import (
 	"os"
+
+	"github.com/qtgolang/SunnyNet/JavaApi"
 )
+
+func LogError(msg string) {
+	JavaJni.LogError(msg)
+}
 
 var defaultGatewayIP, defaultGatewayIf = "", ""
 
@@ -24,10 +30,8 @@ func (n *NewTun) OnTunCreated(fd int) {
 		}
 		var packet []byte
 		packet = append(packet, buf[:nBytes]...)
-		go func() {
-			// 解析包（判断方向、类型）
-			n.parsePacket(packet)
-		}()
+		// 异步调用解析函数处理数据包
+		go n.parsePacket(packet)
 	}
 }
 func getPidByPort(kind string, port uint16) (int32, string) {

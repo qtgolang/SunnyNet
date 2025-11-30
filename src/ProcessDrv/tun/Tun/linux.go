@@ -16,6 +16,8 @@ import (
 	"github.com/songgao/water" // TUN 设备
 )
 
+func LogError(string) {}
+
 var defaultGatewayIP, defaultGatewayIf, ifaceName = tunPublic.GetGatewayByDefault()
 
 // OpenTunDevice 创建并配置 TUN 设备

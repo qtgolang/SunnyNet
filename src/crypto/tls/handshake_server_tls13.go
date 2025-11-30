@@ -244,9 +244,10 @@ GroupSelection:
 
 	selectedProto, err := negotiateALPN(c.config.NextProtos, hs.clientHello.alpnProtocols, c.quic != nil)
 	if err != nil {
-		c.sendAlert(alertNoApplicationProtocol)
-		return err
+		//c.sendAlert(alertNoApplicationProtocol)
+		//return err
 	}
+
 	c.clientProtocol = selectedProto
 
 	if c.quic != nil {

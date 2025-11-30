@@ -10,13 +10,14 @@ package public
 
 import (
 	"fmt"
-	"github.com/qtgolang/SunnyNet/src/http"
-	"github.com/qtgolang/SunnyNet/src/websocket"
 	"math/rand"
 	"time"
+
+	"github.com/qtgolang/SunnyNet/src/http"
+	"github.com/qtgolang/SunnyNet/src/websocket"
 )
 
-const SunnyVersion = "2025-11-08"
+const SunnyVersion = "2025-11-30"
 const Information = `
 ------------------------------------------------------
        欢迎使用 SunnyNet 网络中间件 - V` + SunnyVersion + `   

@@ -26,7 +26,7 @@ import (
 
 func init() {
 	go func() {
-		_ = http.ListenAndServe("0.0.0.0:6001", nil)
+		_ = http.ListenAndServe("0.0.0.0:6002", nil)
 	}()
 }
 

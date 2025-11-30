@@ -4,12 +4,13 @@
 package WinDivert
 
 import (
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
-	"github.com/qtgolang/SunnyNet/src/ProcessDrv/tun/Tun"
 	"net"
 	"os"
 	"sync"
+
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
+	"github.com/qtgolang/SunnyNet/src/ProcessDrv/tun/Tun"
 )
 
 var _myPid = int32(os.Getpid())
@@ -99,6 +100,7 @@ func (d *Divert) Run() bool {
 						}
 					}
 				}
+
 				if pkt := gopacket.NewPacket(bs, layers.LayerTypeIPv6, gopacket.Default); pkt.Layer(layers.LayerTypeIPv6) != nil {
 					ip6 := pkt.Layer(layers.LayerTypeIPv6).(*layers.IPv6)
 					// TCP v6
@@ -116,7 +118,7 @@ func (d *Divert) Run() bool {
 					}
 				}
 				_, _ = h.Send(bs, a)
-			}(data, addr)
+			}(data, addr.Clone())
 		}
 	}()
 	return true

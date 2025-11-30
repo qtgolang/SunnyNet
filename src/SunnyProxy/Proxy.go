@@ -209,7 +209,6 @@ func (p *Proxy) Dial(network, addr string, OutRouterIP *net.TCPAddr) (net.Conn, 
 	}
 	//部分HTTP代理 需要 Proxy-Connection
 	us += "Proxy-Connection: Keep-Alive\r\n"
-	fmt.Println("CONNECT " + addr + " HTTP/1.1\r\nHost: " + addr + "\r\n" + us + "\r\n")
 	_, e = conn.Write([]byte("CONNECT " + addr + " HTTP/1.1\r\nHost: " + addr + "\r\n" + us + "\r\n"))
 	if e != nil {
 		return nil, e
@@ -221,7 +220,6 @@ func (p *Proxy) Dial(network, addr string, OutRouterIP *net.TCPAddr) (net.Conn, 
 		return nil, er
 	}
 	s := string(b[:12])
-	fmt.Println("->>>\r\n" + s)
 	if s != "HTTP/1.1 200" && s != "HTTP/1.0 200" {
 		return nil, fmt.Errorf(string(b))
 	}
@@ -237,7 +235,7 @@ func (p *Proxy) Dial(network, addr string, OutRouterIP *net.TCPAddr) (net.Conn, 
 	_ = conn.SetDeadline(time.Time{})
 	return conn, er
 }
-
+ 
 type direct struct {
 	timeout     time.Duration
 	OutRouterIP *net.TCPAddr
@@ -246,51 +244,223 @@ type direct struct {
 func (ps direct) Dial(network, addr string) (net.Conn, error) {
 	return ps.DialContext(context.Background(), network, addr)
 }
+
 func (ps direct) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
-	var m net.Dialer
-	m.Timeout = ps.timeout
-	if m.Timeout < time.Millisecond {
-		m.Timeout = 5 * time.Second
+	var d net.Dialer                  // 底层 net.Dialer
+	d.Timeout = ps.timeout            // 使用自定义超时
+	if d.Timeout < time.Millisecond { // 防止超时时间太小
+		d.Timeout = 5 * time.Second
 	}
-	if !strings.Contains(addr, "127.0.0.1") && !strings.Contains(addr, "[::1]") {
-		mip := RouterIPInspect(ps.OutRouterIP)
-		if mip != nil {
-			m.LocalAddr = &net.TCPAddr{
-				IP:   mip,
-				Port: 0,
+
+	// 本地回环地址直接走系统默认，不做网卡绑定
+	if !strings.Contains(addr, "127.0.0.1") && !strings.Contains(addr, "[::1]") && ps.OutRouterIP != nil {
+		// 根据 OutRouterIP 找到对应网卡的 v4/v6 地址
+		if mip := RouterIPInspect(ps.OutRouterIP); mip != nil {
+			host, _, err := net.SplitHostPort(addr) // 从 "host:port" 里拆出 host
+			if err == nil {
+				// 去掉 IPv6 字面量的方括号，例如 "[240e:...::1]"
+				if len(host) > 2 && host[0] == '[' && host[len(host)-1] == ']' {
+					host = host[1 : len(host)-1]
+				}
+
+				// 尝试把 host 当作 IP 字面量解析
+				if ip := net.ParseIP(host); ip != nil {
+					// ---- addr 是 IP 字面量：不依赖 network 判断 v4 / v6 ----
+
+					// 根据 network 前缀判断是 TCP 还是 UDP，因为 LocalAddr 类型必须匹配
+					isTCP := strings.HasPrefix(network, "tcp")
+					isUDP := strings.HasPrefix(network, "udp")
+
+					if ip4 := ip.To4(); ip4 != nil {
+						// 目标是 IPv4
+						if mip.IPv4 != nil {
+							if isTCP {
+								// TCP 使用 *net.TCPAddr
+								d.LocalAddr = &net.TCPAddr{
+									IP:   mip.IPv4,
+									Port: 0,
+								}
+							} else if isUDP {
+								// UDP 使用 *net.UDPAddr
+								d.LocalAddr = &net.UDPAddr{
+									IP:   mip.IPv4,
+									Port: 0,
+								}
+							}
+						}
+					} else {
+						// 目标是 IPv6
+						if mip.IPv6 != nil {
+							if isTCP {
+								d.LocalAddr = &net.TCPAddr{
+									IP:   mip.IPv6.IP,
+									Port: 0,
+									Zone: mip.IPv6.Zone,
+								}
+							} else if isUDP {
+								d.LocalAddr = &net.UDPAddr{
+									IP:   mip.IPv6.IP,
+									Port: 0,
+									Zone: mip.IPv6.Zone,
+								}
+							}
+						}
+					}
+				} else {
+					// ---- addr 是域名：按 network 里是否带 4/6 来决定优先绑 v4 或 v6 ----
+					isTCP := strings.HasPrefix(network, "tcp")
+					isUDP := strings.HasPrefix(network, "udp")
+
+					// 明确要求 v4 的情况：tcp4 / udp4
+					if strings.Contains(network, "4") {
+						if mip.IPv4 != nil {
+							if isTCP {
+								d.LocalAddr = &net.TCPAddr{
+									IP:   mip.IPv4,
+									Port: 0,
+								}
+							} else if isUDP {
+								d.LocalAddr = &net.UDPAddr{
+									IP:   mip.IPv4,
+									Port: 0,
+								}
+							}
+						}
+					} else if strings.Contains(network, "6") {
+						// 明确要求 v6 的情况：tcp6 / udp6
+						if mip.IPv6 != nil {
+							if isTCP {
+								d.LocalAddr = &net.TCPAddr{
+									IP:   mip.IPv6.IP,
+									Port: 0,
+									Zone: mip.IPv6.Zone,
+								}
+							} else if isUDP {
+								d.LocalAddr = &net.UDPAddr{
+									IP:   mip.IPv6.IP,
+									Port: 0,
+									Zone: mip.IPv6.Zone,
+								}
+							}
+						}
+					} else {
+						// network 既没写 4 也没写 6（例如 "tcp" / "udp"）
+						// 这种情况下系统会自己选 v4/v6，我们只是尽量给它一个匹配的 LocalAddr
+						if mip.IPv4 != nil {
+							if isTCP {
+								d.LocalAddr = &net.TCPAddr{
+									IP:   mip.IPv4,
+									Port: 0,
+								}
+							} else if isUDP {
+								d.LocalAddr = &net.UDPAddr{
+									IP:   mip.IPv4,
+									Port: 0,
+								}
+							}
+						} else if mip.IPv6 != nil {
+							if isTCP {
+								d.LocalAddr = &net.TCPAddr{
+									IP:   mip.IPv6.IP,
+									Port: 0,
+									Zone: mip.IPv6.Zone,
+								}
+							} else if isUDP {
+								d.LocalAddr = &net.UDPAddr{
+									IP:   mip.IPv6.IP,
+									Port: 0,
+									Zone: mip.IPv6.Zone,
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 	}
-	ctx, cancel := context.WithTimeout(ctx, m.Timeout)
+
+	// 给 DialContext 再包一层超时上下文
+	ctx, cancel := context.WithTimeout(ctx, d.Timeout)
 	defer cancel()
-	return m.DialContext(ctx, network, addr)
+
+	return d.DialContext(ctx, network, addr)
 }
+
 func FormatIP(ip net.IP, port string) string {
 	if ip.To4() != nil {
 		return fmt.Sprintf("%s:%s", ip.String(), port)
 	}
 	return fmt.Sprintf("[%s]:%s", ip.String(), port)
 }
-func RouterIPInspect(addr *net.TCPAddr) net.IP {
-	if addr == nil {
+
+// RouterIPs 保存某个出口网卡的 IPv4 / IPv6 信息  // 定义一个结构体保存 IPv4、IPv6 和 Zone
+type RouterIPs struct {
+	IPv4 net.IP      // 网卡上的 IPv4 地址（可能为 nil）
+	IPv6 *net.IPAddr // 网卡上的 IPv6 地址（可能为 nil，Zone 会填接口名）
+}
+
+// RouterIPInspect 根据 addr.IP 找到对应网卡，并返回该网卡的 IPv4 和 IPv6 信息  // 通过目标 IP 反查对应的网卡和它的 v4/v6
+func RouterIPInspect(addr *net.TCPAddr) *RouterIPs { // 参数类型保持不变，只改返回类型
+	if addr == nil {                                 // 保护一下空指针
 		return nil
 	}
-	interfaces, err := net.Interfaces()
-	if err != nil {
+
+	interfaces, err := net.Interfaces() // 获取所有网卡
+	if err != nil {                     // 如果获取失败直接返回
 		return nil
 	}
-	for _, face := range interfaces {
-		adders, err1 := face.Addrs()
-		if err1 != nil {
+
+	for _, face := range interfaces { // 遍历每个网卡
+		addrs, err1 := face.Addrs() // 取网卡上的所有地址
+		if err1 != nil {            // 某个网卡取地址失败就跳过
 			continue
 		}
-		for _, a := range adders {
-			if aspnet, ok := a.(*net.IPNet); ok {
-				if aspnet.Contains(addr.IP) {
-					return addr.IP
+
+		// 先判断这个网卡的任何一个地址是否包含目标 addr.IP  // 判断这个网卡是不是我们要找的那张
+		match := false            // 标记是否匹配
+		for _, a := range addrs { // 遍历网卡地址
+			if aspnet, ok := a.(*net.IPNet); ok { // 只处理 IPNet
+				if aspnet.Contains(addr.IP) { // 目标 IP 在这个网段里
+					match = true // 标记匹配
+					break        // 找到了就可以退出这层循环
 				}
 			}
 		}
+		if !match { // 如果这个网卡不匹配目标 IP，跳过
+			continue
+		}
+
+		// 走到这里说明 face 就是承载 addr.IP 的网卡  // 现在从这个网卡上收集它的 v4 和 v6
+		var ip4 net.IP      // 保存网卡上的 IPv4
+		var ip6 *net.IPAddr // 保存网卡上的 IPv6（带 Zone）
+
+		for _, a := range addrs { // 再遍历这个网卡的地址
+			aspnet, ok := a.(*net.IPNet) // 仍然只关心 IPNet
+			if !ok {
+				continue
+			}
+
+			ip := aspnet.IP // 实际 IP（可能是 v4 也可能是 v6）
+
+			if ip4 == nil && ip.To4() != nil { // 第一次碰到 IPv4 时记录下来
+				ip4 = ip
+			}
+
+			if ip6 == nil && ip.To4() == nil { // 第一次碰到 IPv6（真 v6，不是 v4 映射）时记录下来
+				ip6 = &net.IPAddr{ // 用 IPAddr 是为了能带 Zone
+					IP:   ip,        // IPv6 地址
+					Zone: face.Name, // Zone 填网卡名，比如 "Ethernet"、"Wi-Fi"
+				}
+			}
+		}
+
+		// 如果这个网卡有任何一个地址，就返回  // 至少有一个 v4 或 v6 就算找到
+		if ip4 != nil || ip6 != nil {
+			return &RouterIPs{
+				IPv4: ip4,
+				IPv6: ip6,
+			}
+		}
 	}
-	return nil
+	return nil // 都没找到就返回 nil
 }

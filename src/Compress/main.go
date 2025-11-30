@@ -5,11 +5,12 @@ import (
 	"compress/flate"
 	"compress/gzip"
 	"compress/zlib"
-	"github.com/andybalholm/brotli"
-	"github.com/klauspost/compress/zstd"
 	"io"
 	"io/ioutil"
 	"strings"
+
+	"github.com/andybalholm/brotli"
+	"github.com/klauspost/compress/zstd"
 )
 
 var _null_bytes = make([]byte, 0)
@@ -129,21 +130,23 @@ var encompressors = map[string]func([]byte) []byte{
 }
 
 // CompressAuto 自动压缩 仅支持 gzip、br、deflate、zstd、zlib 算法
-func CompressAuto(encoding string, data []byte) []byte {
+func CompressAuto(encoding string, data []byte) ([]byte, bool) {
 	if Compress, ok := encompressors[strings.ToLower(encoding)]; ok {
 		if compressed := Compress(data); len(compressed) > 0 {
-			return compressed
+			return compressed, true
 		}
 	}
-	return nil
+	//如果不支持输入算法,返回原始数据
+	return data, false
 }
 
 // UnCompressAuto 自动解压缩 仅支持 gzip、br、deflate、zstd、zlib 算法
-func UnCompressAuto(encoding string, data []byte) []byte {
+func UnCompressAuto(encoding string, data []byte) ([]byte, bool) {
 	if decompressor, ok := decompressors[strings.ToLower(encoding)]; ok {
 		if uncompressed := decompressor(data); len(uncompressed) > 0 {
-			return uncompressed
+			return uncompressed, true
 		}
 	}
-	return nil
+	//如果不支持输入算法,返回原始数据
+	return data, false
 }

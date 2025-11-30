@@ -36,3 +36,9 @@ void closeTcpConnectionByPid(DWORD pid, DWORD ulAf);
 
 // 获取指定 TCP 地址和端口的 PID
 int getTcpInfoPID(char* Addr, int SunnyProt);
+
+/* IsPortListening 判断指定 TCP 端口是否在当前机器上处于 LISTEN 状态
+ * 返回 1 表示有 LISTEN 套接字
+ * 返回 0 表示未监听或查询失败
+ */
+int IsPortListening(int port);

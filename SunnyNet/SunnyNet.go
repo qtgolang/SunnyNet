@@ -8,6 +8,19 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net"
+	"net/textproto"
+	"net/url"
+	"regexp"
+	"runtime"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/qtgolang/SunnyNet/src/Certificate"
 	"github.com/qtgolang/SunnyNet/src/CrossCompiled"
 	"github.com/qtgolang/SunnyNet/src/GoScriptCode"
@@ -24,18 +37,6 @@ import (
 	"github.com/qtgolang/SunnyNet/src/httpClient"
 	"github.com/qtgolang/SunnyNet/src/public"
 	"github.com/qtgolang/SunnyNet/src/websocket"
-	"io"
-	"io/ioutil"
-	"net"
-	"net/textproto"
-	"net/url"
-	"regexp"
-	"runtime"
-	"strconv"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 func init() {
@@ -1940,7 +1941,6 @@ func (s *proxyRequest) copyBuffer(Method string, ExpectLen int) {
 			}
 		}
 	}
-
 	dstConn := s.Response.Conn
 	size := 512
 	MaxSize := 5 * 1024 * 1024 //5M
@@ -2008,10 +2008,12 @@ func (s *proxyRequest) copyBuffer(Method string, ExpectLen int) {
 				if s.Response.Body != nil {
 					_ = s.Response.Body.Close()
 				}
-				s.Response.Body = ioutil.NopCloser(bytes.NewBuffer(buff.Bytes()))
+				s.Response.Body = io.NopCloser(bytes.NewBuffer(buff.Bytes()))
 
 				s.CallbackBeforeResponse()
-
+				if s.Response.Body == nil {
+					s.Response.Body = io.NopCloser(bytes.NewBuffer([]byte{}))
+				}
 				_body, _ := s.ReadAll(s.Response.Body)
 				_ = s.Conn.SetDeadline(time.Time{})
 				s.Response.WriteHeader(strconv.Itoa(len(_body)))

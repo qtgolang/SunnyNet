@@ -162,6 +162,9 @@ func SendFinToClient(d *DevConn) []byte {
 	serverPort := d.serverPort
 	clientPort := d.clientPort
 	v4 := d.v4
+
+	d.serverSeqNext = seq + 1
+
 	d.mu.Unlock()
 
 	if v4 {
@@ -183,11 +186,6 @@ func SendFinToClient(d *DevConn) []byte {
 			Window:  65535,
 		}
 		bs := sendIPv4(ip, tcp, nil)
-		d.mu.Lock()
-		if seq == d.serverSeqNext {
-			d.serverSeqNext = seq + 1
-		}
-		d.mu.Unlock()
 		return bs
 	}
 
@@ -208,11 +206,6 @@ func SendFinToClient(d *DevConn) []byte {
 		Window:  65535,
 	}
 	bs := sendIPv6(ip6, tcp6, nil)
-	d.mu.Lock()
-	if seq == d.serverSeqNext {
-		d.serverSeqNext = seq + 1
-	}
-	d.mu.Unlock()
 	return bs
 }
 
@@ -261,58 +254,7 @@ func SendRstToClient(d *DevConn) []byte {
 	}
 	return sendIPv6(ip6, tcp6, nil)
 }
-func buildTCPReply(d *DevConn, tcp *layers.TCP, sendAck bool, sendFin bool, sendRst bool) (int, error) {
-	var replyIP gopacket.NetworkLayer
-	var replyIPop gopacket.SerializableLayer
-	if d.v4 {
-		ip := &layers.IPv4{
-			Version: 4, IHL: 5,
-			SrcIP: d.serverIP, DstIP: d.clientIP,
-			Protocol: layers.IPProtocolTCP, TTL: 64,
-		}
-		replyIP = ip
-		replyIPop = ip
-	} else {
-		ip6 := &layers.IPv6{
-			Version:    6,
-			SrcIP:      d.serverIP,
-			DstIP:      d.clientIP,
-			NextHeader: layers.IPProtocolTCP,
-			HopLimit:   64,
-		}
-		replyIP = ip6
-		replyIPop = ip6
-	}
-
-	replyTCP := *tcp
-
-	replyTCP.SrcPort, replyTCP.DstPort = tcp.DstPort, tcp.SrcPort
-
-	// 清空 payload
-	replyTCP.Payload = nil
-
-	// 重置标志
-	replyTCP.SYN = false
-	replyTCP.ACK = sendAck
-	replyTCP.FIN = sendFin
-	replyTCP.RST = sendRst
-	replyTCP.PSH = false
-	replyTCP.URG = false
-	replyTCP.ECE = false
-	replyTCP.CWR = false
-	// 序号与确认号
-	replyTCP.Seq = tcp.Ack
-	replyTCP.Ack = tcp.Seq + uint32(len(tcp.Payload))
-	if tcp.SYN || tcp.FIN {
-		replyTCP.Ack++
-	}
-	_ = replyTCP.SetNetworkLayerForChecksum(replyIP)
-	buf := gopacket.NewSerializeBuffer()
-	opts := gopacket.SerializeOptions{FixLengths: true, ComputeChecksums: true}
-	_ = gopacket.SerializeLayers(buf, opts, replyIPop, &replyTCP)
-	return d.tun.Write(buf.Bytes())
-}
-
+ 
 // minInt 返回较小的整数
 func minInt(a, b int) int {
 	if a < b { // 如果 a 小于 b
@@ -329,7 +271,7 @@ func calcMSS(v4 bool) int {
 
 // SendDataToClient ：按 MSS 分段发送；写 TUN 时不持锁；仅最后一段置 PSH
 func SendDataToClient(d *DevConn, payload []byte) (int, error) { // 对外发送函数
-	if len(payload) == 0 { // 没有数据
+	if len(payload) == 0 {                                       // 没有数据
 		return 0, nil // 直接返回
 	}
 	d.mu.Lock()

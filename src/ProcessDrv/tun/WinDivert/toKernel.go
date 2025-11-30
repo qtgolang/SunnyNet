@@ -4,6 +4,8 @@
 package WinDivert
 
 import (
+	"runtime"
+
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 )
@@ -172,70 +174,115 @@ func SendAckToKernel(h *Handle, d *DevConn, clientNext uint32, addr *Address) er
 	}
 }
 
-// SendDataToClient ：把伪 server 要发送的数据注入给 client，正确设置 Seq/Ack 并更新 serverSeqNext
-func SendDataToClient(h *Handle, d *DevConn, payload []byte, addr *Address) (int, error) {
-	// 读取必要字段（缩短锁持有时间）
-	d.mu.Lock()
-	seq := d.serverSeqNext
-	ack := d.clientNext
-	serverIP := d.serverIP
-	clientIP := d.clientIP
-	serverPort := d.serverPort
-	clientPort := d.clientPort
-	v4 := d.v4
-	d.mu.Unlock()
+// minInt 返回较小的整数
+func minInt(a, b int) int {
+	if a < b { // 如果 a 小于 b
+		return a // 返回 a
+	}
+	return b // 否则返回 b
+}
+func calcMSS(v4 bool) int {
+	if v4 { // 如果是 IPv4
+		return 1460 // 典型以太网 MTU 1500 - IPv4 20 - TCP 20 = 1460
+	}
+	return 1440 // IPv6 40 + TCP 20，1500 - 40 - 20 = 1440
+}
 
-	if v4 {
-		ip := &layers.IPv4{
-			Version:  4,
-			IHL:      5,
-			SrcIP:    serverIP,
-			DstIP:    clientIP,
-			Protocol: layers.IPProtocolTCP,
-			TTL:      64,
-		}
-		tcp := &layers.TCP{
-			SrcPort: layers.TCPPort(serverPort),
-			DstPort: layers.TCPPort(clientPort),
-			Seq:     seq,
-			Ack:     ack,
-			ACK:     true,
-			PSH:     true,
-			Window:  65535,
-		}
-		if err := sendIPv4(h, ip, tcp, payload, addr, false); err != nil {
-			return 0, err
-		}
-		// 更新 serverSeqNext
-		d.mu.Lock()
-		d.serverSeqNext += uint32(len(payload))
-		d.mu.Unlock()
-		return len(payload), nil
-	}
-
-	ip6 := &layers.IPv6{
-		Version:    6,
-		SrcIP:      serverIP,
-		DstIP:      clientIP,
-		NextHeader: layers.IPProtocolTCP,
-		HopLimit:   64,
-	}
-	tcp6 := &layers.TCP{
-		SrcPort: layers.TCPPort(serverPort),
-		DstPort: layers.TCPPort(clientPort),
-		Seq:     seq,
-		Ack:     ack,
-		ACK:     true,
-		PSH:     true,
-		Window:  65535,
-	}
-	if err := sendIPv6(h, ip6, tcp6, payload, addr, false); err != nil {
-		return 0, err
+// SendDataToClient ：按 MSS 分段发送；写 TUN 时不持锁；仅最后一段置 PSH
+func SendDataToClient(d *DevConn, payload []byte) (int, error) { // 对外发送函数
+	if len(payload) == 0 { // 没有数据
+		return 0, nil // 直接返回
 	}
 	d.mu.Lock()
-	d.serverSeqNext += uint32(len(payload))
-	d.mu.Unlock()
-	return len(payload), nil
+	defer d.mu.Unlock()
+	mss := calcMSS(d.v4) // 计算单段最大负载
+	// 发送循环变量
+	total := len(payload) // 总长度
+	offset := 0           // 当前偏移
+	sent := 0             // 成功写入的 payload 字节数
+	// 为了减轻内核队列压力，批量发送若干段后让出调度
+	const burstSeg = 8 // 每发送 8 段让出一次
+
+	// 主循环：直到全部发送完成
+	for segIdx := 0; offset < total; segIdx++ {
+		// 按段发送
+		// 计算本段范围
+		remain := total - offset     // 剩余字节
+		chunk := minInt(mss, remain) // 本段大小不超过 MSS
+		end := offset + chunk        // 本段结束位置
+		psh := end == total          // 仅最后一段置 PSH
+		// ---- 锁内：读取快照、构造首部并拿到本段 Seq/Ack ----
+		seq := d.serverSeqNext     // 当前段 Seq 起点
+		ack := d.clientNext        // 当前 Ack 值
+		serverIP := d.serverIP     // 源 IP
+		clientIP := d.clientIP     // 目的 IP
+		serverPort := d.serverPort // 源端口
+		clientPort := d.clientPort // 目的端口
+		v4 := d.v4                 // 是否 IPv4
+		seg := payload[offset:end] // 当前段载荷切片
+		var err error
+		if v4 { // IPv4 分支
+			ip := &layers.IPv4{ // 构造 IPv4 首部
+				Version:  4,                    // 版本
+				IHL:      5,                    // 无选项 IHL=5
+				SrcIP:    serverIP,             // 源 IP
+				DstIP:    clientIP,             // 目的 IP
+				Protocol: layers.IPProtocolTCP, // 上层协议 TCP
+				TTL:      64,                   // TTL
+			}
+			tcp := &layers.TCP{ // 构造 TCP 首部
+				SrcPort: layers.TCPPort(serverPort), // 源端口
+				DstPort: layers.TCPPort(clientPort), // 目的端口
+				Seq:     seq,                        // 本段 Seq
+				Ack:     ack,                        // 本段 Ack
+				ACK:     true,                       // ACK 位
+				PSH:     psh,                        // 仅最后一段置 PSH
+				Window:  65535,                      // 窗口（与接收窗口无关）
+			}
+			err = sendIPv4(d.h, ip, tcp, seg, d.lastAddr, false)
+		} else { // IPv6 分支
+			ip6 := &layers.IPv6{ // 构造 IPv6 首部
+				Version:    6,                    // 版本
+				SrcIP:      serverIP,             // 源 IP
+				DstIP:      clientIP,             // 目的 IP
+				NextHeader: layers.IPProtocolTCP, // 下一头部 TCP
+				HopLimit:   64,                   // 跳限
+			}
+			tcp6 := &layers.TCP{ // 构造 TCP 首部
+				SrcPort: layers.TCPPort(serverPort), // 源端口
+				DstPort: layers.TCPPort(clientPort), // 目的端口
+				Seq:     seq,                        // 本段 Seq
+				Ack:     ack,                        // 本段 Ack
+				ACK:     true,                       // ACK 位
+				PSH:     psh,                        // 仅最后一段置 PSH
+				Window:  65535,                      // 窗口
+			}
+			err = sendIPv6(d.h, ip6, tcp6, seg, d.lastAddr, false)
+		}
+		// 先在“状态上推进”下一发送序列（成功后生效；失败再回滚）
+		nextSeq := seq + uint32(chunk) // 预计算下一 seq
+		// 锁内不写 TUN，先解锁让收包线程有机会推进窗口
+
+		// ---- 锁外：执行实际写入（避免长时间持锁阻塞收包）----
+		if err != nil { // 写 TUN 失败
+			// 写失败需要回到锁内回滚 serverSeqNext
+			d.serverSeqNext = seq // 回滚到当前段起始 Seq
+			return sent, err      // 返回已发送字节及错误
+		}
+
+		// ---- 锁内：确认写成功后，更新状态并推进 offset/sent ----
+		d.serverSeqNext = nextSeq // 提交推进后的 Seq
+		// 推进偏移与累计成功字节
+		offset = end  // 偏移前移到下一段起点
+		sent += chunk // 累计成功写入的 payload 字节数
+
+		// 每写若干段，让出一下调度，减少内核队列压力
+		if segIdx%burstSeg == burstSeg-1 { // 达到一批次
+			runtime.Gosched() // 让出调度给收包 goroutine
+		}
+	}
+	// 全部成功
+	return sent, nil // 返回成功写入的 payload 字节总数
 }
 
 // SendFinToClient ：注入一个 FIN/ACK（server -> client），并在成功后把 serverSeqNext 增 1（FIN 消耗 1 序号）。

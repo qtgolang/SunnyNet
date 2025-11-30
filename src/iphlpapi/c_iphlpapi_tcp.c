@@ -262,3 +262,62 @@ int getTcpInfoPID( char* Addr, int SunnyProt )
 	/* 没有找到指定连接，释放内存空间后返回错误代码 */
 	return(-4);
 }
+/* IsPortListening 判断指定 TCP 端口是否在当前机器上处于 LISTEN 状态
+ * 返回 1 表示有 LISTEN 套接字
+ * 返回 0 表示未监听或查询失败
+ */
+int IsPortListening(int port)
+{
+	/* 如果 GetTcpTable2 函数指针没有初始化，直接认为未监听 */
+	if (pGetTcpTable2 == NULL) {
+		return 0;	// 函数未就绪，返回未监听
+	}
+
+	DWORD bufferSize = 0;	// 保存所需缓冲区大小
+	DWORD result;		// Windows API 返回值
+
+	/* 第一次调用只为了获取所需缓冲区大小 */
+	result = pGetTcpTable2(NULL, &bufferSize, TRUE);	// TRUE 表示按地址排序
+	if (result != ERROR_INSUFFICIENT_BUFFER) {
+		// 如果不是缓冲区不足错误，说明调用失败，直接返回未监听
+		return 0;
+	}
+
+	/* 分配保存 TCP 表的内存 */
+	PMIB_TCPTABLE2 tcpTable = (PMIB_TCPTABLE2)malloc(bufferSize);	// 为 TCP 表分配内存
+	if (tcpTable == NULL) {
+		// 分配失败，直接返回未监听
+		return 0;
+	}
+
+	/* 真正获取 TCP 连接表 */
+	result = pGetTcpTable2(tcpTable, &bufferSize, TRUE);	// 再次调用获取数据
+	if (result != NO_ERROR) {
+		// 获取失败，释放内存后返回未监听
+		free(tcpTable);	// 释放内存避免泄漏
+		return 0;
+	}
+
+	int listening = 0;	// 标志位：是否找到 LISTEN 记录
+
+	/* 遍历所有 TCP 条目 */
+	for (DWORD i = 0; i < tcpTable->dwNumEntries; i++) {
+		MIB_TCPROW2 *row = &tcpTable->table[i];	// 当前行指针
+
+		/* 将网络字节序的端口转换为主机字节序 */
+		int localPort = ntohs2((u_short)row->dwLocalPort);	// 提取本地端口
+
+		/* 判断是否是目标端口且处于 LISTEN 状态 */
+		if (localPort == port && row->dwState == MIB_TCP_STATE_LISTEN) {
+			// 找到至少一个处于 LISTEN 状态的套接字
+			listening = 1;	// 标记为已监听
+			break;		// 可以提前结束循环
+		}
+	}
+
+	/* 用完 TCP 表需要释放内存 */
+	free(tcpTable);	// 释放 TCP 表内存
+
+	/* 返回是否监听的结果 */
+	return listening;	// 1：监听中，0：未监听或失败
+}

@@ -19,7 +19,7 @@ import (
 func (n *NewTun) handleTCPCommand(tcp *layers.TCP, srcIP, dstIP net.IP, clientPort, serverPort uint16, v4 bool) {
 	if tcp.SYN && !tcp.ACK {
 		pid, name := getPidByPort("tcp", uint16(tcp.SrcPort))
-		s := NewDevConn(n.tun, srcIP, clientPort, dstIP, serverPort, v4, tcp.Seq, tcp.Ack)
+		s := NewDevConn(n.tun, srcIP, clientPort, dstIP, serverPort, v4, tcp.Seq)
 		s.pid = uint32(pid)
 		sessionsMu.Lock()
 		sessions[clientPort] = s
@@ -48,7 +48,6 @@ func (n *NewTun) handleTCPCommand(tcp *layers.TCP, srcIP, dstIP net.IP, clientPo
 
 				c, e := dialer.Dial("tcp", net.JoinHostPort(dstIP.String(), strconv.Itoa(int(serverPort))))
 				if e != nil {
-					_ = SendRstToClient(s)
 					_ = s.Close()
 					return
 				}
@@ -67,9 +66,6 @@ func (n *NewTun) handleTCPCommand(tcp *layers.TCP, srcIP, dstIP net.IP, clientPo
 					wg.Done()
 				}()
 				wg.Wait()
-				sessionsMu.Lock()
-				delete(sessions, clientPort)
-				sessionsMu.Unlock()
 			}()
 			return
 		}
@@ -83,31 +79,22 @@ func (n *NewTun) handleTCPCommand(tcp *layers.TCP, srcIP, dstIP net.IP, clientPo
 	sess, ok := sessions[clientPort]
 	sessionsMu.Unlock()
 	if !ok {
-		h2 := NewDevConn(n.tun, srcIP, clientPort, dstIP, serverPort, true, tcp.Seq, tcp.Ack)
+		h2 := NewDevConn(n.tun, srcIP, clientPort, dstIP, serverPort, v4, tcp.Seq)
 		_ = SendRstToClient(h2)
 		return
 	}
 	if tcp.FIN || tcp.RST {
-		sessionsMu.Lock()
-		delete(sessions, clientPort)
-		sessionsMu.Unlock()
-		ProcessCheck.DelDevObj(clientPort)
 		if tcp.FIN {
-			_, _ = buildTCPReply(sess, tcp, true, true, false)
+			_ = SendFinToClient(sess)
 		} else if tcp.RST {
-			_, _ = buildTCPReply(sess, tcp, true, false, false)
 		}
+		_ = sess.Close()
 		return
 	}
-	if len(tcp.Payload) > 0 {
-		sess.PushClientPayload(tcp.Payload, tcp.Seq)
-		return
-	}
-	sess.mu.Lock()
-	sess.clientNext = tcp.Seq
-	sess.mu.Unlock()
+	sess.PushClientPayload(tcp.Payload, tcp.Seq)
 	return
 }
+
 func (n *NewTun) handleTCP4(ip *layers.IPv4, tcp *layers.TCP) {
 	clientIP := ip.SrcIP
 	clientPort := uint16(tcp.SrcPort)

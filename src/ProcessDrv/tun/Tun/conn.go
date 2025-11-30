@@ -12,6 +12,9 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/qtgolang/SunnyNet/src/ProcessDrv/ProcessCheck"
+	"github.com/qtgolang/SunnyNet/src/ProcessDrv/tun/tunPublic"
 )
 
 type DevConn struct {
@@ -40,9 +43,14 @@ type DevConn struct {
 	tun                  io.ReadWriteCloser
 	v4                   bool
 	pid                  uint32
+	inChSeg              map[uint32][]byte
+	ts                   time.Time
 }
 
 func (d *DevConn) GetRemoteAddress() string {
+	if tunPublic.IsLocalIp(d.serverIP) {
+		return net.JoinHostPort("127.0.0.1", strconv.Itoa(int(d.serverPort)))
+	}
 	return net.JoinHostPort(d.serverIP.String(), strconv.Itoa(int(d.serverPort)))
 }
 
@@ -63,20 +71,28 @@ func (d *DevConn) ID() uint64 {
 }
 
 // 构造函数
-func NewDevConn(h io.ReadWriteCloser, clientIP net.IP, clientPort uint16, serverIP net.IP, serverPort uint16, ipv4 bool, seq, ack uint32) *DevConn {
+func NewDevConn(h io.ReadWriteCloser, clientIP net.IP, clientPort uint16, serverIP net.IP, serverPort uint16, ipv4 bool, clientSynSeq uint32) *DevConn {
+	// 创建 DevConn 基本信息
 	d := &DevConn{
-		clientIP:      clientIP,
-		clientPort:    clientPort,
-		serverIP:      serverIP,
-		serverPort:    serverPort,
-		dataCh:        make(chan struct{}, 1),
-		v4:            ipv4,
-		serverSeqNext: seq,
-		clientNext:    ack,
-		tun:           h,
+		clientIP:   clientIP,               // 客户端 IP
+		clientPort: clientPort,             // 客户端端口
+		serverIP:   serverIP,               // 目标服务器 IP
+		serverPort: serverPort,             // 目标服务器端口
+		dataCh:     make(chan struct{}, 1), // 数据通知 channel（缓冲 1，避免阻塞）
+		v4:         ipv4,                   // 是否 IPv4
+		tun:        h,                      // TUN 句柄
 	}
+	d.ts = time.Now()
+	// 客户端期望 seq：客户端 ISN + 1
+	// 第一个数据包的 tcp.Seq 必须等于这个值才会被接收
+	d.clientNext = clientSynSeq + 1
+
+	// 伪造一个服务端 ISN
 	d.serverISN = rand.Uint32()
+
+	// 我们接下来发给客户端的 Seq 从 serverISN+1 开始
 	d.serverSeqNext = d.serverISN + 1
+
 	return d
 }
 
@@ -144,29 +160,46 @@ func (d *DevConn) Close() error {
 	d.mu.Lock()
 	already := d.closed
 	d.closed = true
-	// signal readers (non-blocking send to channel)
 	select {
 	case d.dataCh <- struct{}{}:
 	default:
 	}
+	d.inChSeg = nil
 	d.mu.Unlock()
-	if already {
-		return nil
+	sessionsMu.Lock()
+	delete(sessions, d.clientPort)
+	sessionsMu.Unlock()
+	ProcessCheck.DelDevObj(d.clientPort)
+	if !already {
+		_, _ = d.tun.Write(SendRstToClient(d))
 	}
-	_, _ = d.tun.Write(SendFinToClient(d))
 	return nil
 }
 
 // RemoteAddr 返回真实的 server 地址
 func (d *DevConn) RemoteAddr() net.Addr {
+	if tunPublic.IsLocalIp(d.serverIP) {
+		return &net.TCPAddr{
+			IP:   loopIp,
+			Port: int(d.serverPort),
+		}
+	}
 	return &net.TCPAddr{
 		IP:   d.serverIP,
 		Port: int(d.serverPort),
 	}
 }
 
+var loopIp = net.ParseIP("127.0.0.1")
+
 // LocalAddr 返回伪造的 client 地址
 func (d *DevConn) LocalAddr() net.Addr {
+	if tunPublic.IsLocalIp(d.clientIP) {
+		return &net.TCPAddr{
+			IP:   loopIp,
+			Port: int(d.clientPort),
+		}
+	}
 	return &net.TCPAddr{
 		IP:   d.clientIP,
 		Port: int(d.clientPort),
@@ -199,33 +232,80 @@ func (d *DevConn) SetWriteDeadline(t time.Time) error {
 	d.mu.Unlock()
 	return nil
 }
-
 func (d *DevConn) PushClientPayload(payload []byte, seq uint32) {
-	if seq != d.clientNext {
-		return
-	}
+	// 递归式补齐乱序分片：当前分片处理完之后，再看缓存里有没有刚好接上的
 	defer func() {
 		d.mu.Lock()
-		clientNext := d.clientNext
-		d.mu.Unlock()
-		if clientNext != 0 {
-			_, _ = d.tun.Write(SendAckToKernel(d, clientNext))
+		for s, seg := range d.inChSeg {
+			// 过滤掉“比当前 clientNext 还早”的旧分片
+			if seqBefore(s, d.clientNext) {
+				delete(d.inChSeg, s)
+				continue
+			}
+			// 如果刚好是下一个期望 seq，就拿出来递归处理
+			if seqEqual(s, d.clientNext) {
+				delete(d.inChSeg, s)
+				// 递归调用前先解锁，避免死锁
+				d.mu.Unlock()
+				d.PushClientPayload(seg, s)
+				return
+			}
+			// 剩下的是“未来分片”，继续保留在 inChSeg 里
 		}
+		d.mu.Unlock()
 	}()
-	if len(payload) == 0 {
-		// 仍更新 seq
-		d.mu.Lock()
-		d.clientNext = seq + uint32(len(payload))
+	d.mu.Lock()
+	if d.closed {
 		d.mu.Unlock()
 		return
 	}
-	d.mu.Lock()
-	d.buff.Write(payload)
-	d.clientNext = seq + uint32(len(payload))
-	// 非阻塞通知
-	select {
-	case d.dataCh <- struct{}{}:
-	default:
+	// 严格按序接收：这里只处理“刚好等于期望 seq”的分片
+	if !seqEqual(seq, d.clientNext) {
+		// 如果是未来的 seq，先缓存起来，等缺失的分片到了再补
+		if seqAfter(seq, d.clientNext) {
+			if d.inChSeg == nil {
+				d.inChSeg = make(map[uint32][]byte)
+			}
+			// 这里直接覆盖同一 seq 的旧缓存，一般没有问题
+			d.inChSeg[seq] = payload
+		}
+		d.mu.Unlock()
+		return
 	}
+	needNotify := len(payload) > 0
+	if !needNotify {
+		d.mu.Unlock()
+		return
+	}
+	_, _ = d.buff.Write(payload)
+	d.clientNext = seq + uint32(len(payload))
+	clientNext := d.clientNext
 	d.mu.Unlock()
+	// 锁外发送 ACK
+	if bs := SendAckToKernel(d, clientNext); len(bs) > 0 {
+		_, _ = d.tun.Write(bs)
+	}
+	// 锁外通知
+	if needNotify {
+		select {
+		case d.dataCh <- struct{}{}:
+			return // 发送成功就退出
+		default:
+		}
+	}
+}
+
+// 回绕安全：a 是否在 b 之后（a > b）,避免uint32溢出问题
+func seqAfter(a, b uint32) bool {
+	return int32(a-b) > 0
+}
+
+// 回绕安全：a 是否在 b 之前（a < b）,避免uint32溢出问题
+func seqBefore(a, b uint32) bool {
+	return int32(a-b) < 0
+}
+
+// 回绕安全：a == b,避免uint32溢出问题
+func seqEqual(a, b uint32) bool {
+	return a == b
 }

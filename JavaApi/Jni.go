@@ -617,10 +617,11 @@ import "C"
 import "C"
 import (
 	"fmt"
-	"github.com/qtgolang/SunnyNet/JavaApi/sig"
 	"strings"
 	"unicode/utf16"
 	"unsafe"
+
+	"github.com/qtgolang/SunnyNet/JavaApi/sig"
 )
 
 const (

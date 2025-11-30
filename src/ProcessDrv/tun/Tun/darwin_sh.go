@@ -11,6 +11,9 @@ const sh1 = `#!/bin/bash
 # 功能：后台监控目标进程，当进程退出时自动恢复默认网关
 # ==============================
 
+# 忽略 Ctrl+C 产生的 SIGINT，防止被终端一起杀掉
+trap '' INT
+
 LOG=/tmp/SunnyTunCancel.log                         # 日志
 PIDFILE=/tmp/SunnyTunCancel.pid                     # PID 文件
 
@@ -72,6 +75,9 @@ const sh2 = `#!/bin/bash
 # 🛠 SunnyTunCancel.sh (daemon 版)
 # 功能：后台监控目标进程，当进程退出时自动重启所有物理网卡
 # ==============================
+
+# 忽略 Ctrl+C 产生的 SIGINT，防止被终端一起杀掉
+trap '' INT
 
 LOG=/tmp/SunnyTunCancel.log                         # 日志
 PIDFILE=/tmp/SunnyTunCancel.pid                     # PID 文件

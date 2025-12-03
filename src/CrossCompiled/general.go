@@ -1,12 +1,12 @@
 package CrossCompiled
 
 import (
+	"strconv"
+
 	"github.com/qtgolang/SunnyNet/src/ProcessDrv/tun"
 	Tun2 "github.com/qtgolang/SunnyNet/src/ProcessDrv/tun/Tun"
 	"github.com/qtgolang/SunnyNet/src/iphlpapi/net"
 	"github.com/shirou/gopsutil/process"
-	"os"
-	"strconv"
 )
 
 type NFAPI struct {
@@ -80,36 +80,4 @@ func GetPidName(pid int32) string {
 		return ""
 	}
 	return name
-}
-
-var myPid = int32(os.Getpid())
-
-// IsLoopRequest 是否环路请求
-func IsLoopRequest(Port string, SunnyPort int) bool {
-	p, _ := strconv.Atoi(Port)
-	if p == 0 {
-		return false
-	}
-	_ConnPort := uint32(p)
-	_SunnyPort := uint32(SunnyPort)
-	connections, _ := net.ConnectionsPid("tcp", myPid)
-	for _, conn := range connections {
-		if conn.Raddr.Port == _SunnyPort {
-			if conn.Laddr.Port == _ConnPort {
-				return true
-			}
-		}
-
-	}
-	return false
-}
-
-func LoopRemotePort(Srt string) uint32 {
-	connections, _ := net.ConnectionsPid("tcp", myPid)
-	for _, conn := range connections {
-		if conn.Laddr.String() == Srt {
-			return conn.Raddr.Port
-		}
-	}
-	return 0
 }

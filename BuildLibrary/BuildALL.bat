@@ -51,19 +51,10 @@ echo [Mini]_Build_Android_x86.so
 go build -trimpath  -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Mini/Android/x86/libSunnyNet.so"
 
 set GOOS=android
-set GOARCH=386
+set GOARCH=amd64
 set CC=%NDK%\bin\x86_64-linux-android21-clang
 echo [Full]_Build_Android_x86_64.so
 go build -trimpath  -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Full/Android/x86_64/libSunnyNet.so"
 echo [Mini]_Build_Android_x86_64.so
 go build -trimpath  -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Mini/Android/x86_64/libSunnyNet.so"
 
-
-set GOOS=android
-set GOARCH=386
-set CC=%NDK%\bin\i686-linux-android16-clang
-echo [Full]_Build_Android_x86.so
-go build -trimpath  -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Full/Android/x86/libSunnyNet.so"
-echo [Mini]_Build_Android_x86.so
-go build -trimpath  -tags mini -buildmode=c-shared  -ldflags "-s -w" -o "%tmpPath%Library/Mini/Android/x86/libSunnyNet.so"
-@echo on

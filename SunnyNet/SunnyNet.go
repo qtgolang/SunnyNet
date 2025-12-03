@@ -21,6 +21,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	JavaJni "github.com/qtgolang/SunnyNet/JavaApi"
 	"github.com/qtgolang/SunnyNet/src/Certificate"
 	"github.com/qtgolang/SunnyNet/src/CrossCompiled"
 	"github.com/qtgolang/SunnyNet/src/GoScriptCode"
@@ -35,6 +36,7 @@ import (
 	"github.com/qtgolang/SunnyNet/src/dns"
 	"github.com/qtgolang/SunnyNet/src/http"
 	"github.com/qtgolang/SunnyNet/src/httpClient"
+	"github.com/qtgolang/SunnyNet/src/loop"
 	"github.com/qtgolang/SunnyNet/src/public"
 	"github.com/qtgolang/SunnyNet/src/websocket"
 )
@@ -47,7 +49,7 @@ func init() {
 
 // TargetInfo 请求连接信息
 type TargetInfo struct {
-	Host string //带端口号
+	Host string
 	Port uint16
 	IPV6 bool
 }
@@ -532,25 +534,6 @@ func (s *proxyRequest) Socks5ProxyVerification() bool {
 	return true
 }
 
-var loopLock sync.Mutex
-var linkMap = make(map[string]string)
-
-func linkAdd(o, n string) {
-	loopLock.Lock()
-	defer loopLock.Unlock()
-	linkMap[n] = o
-}
-func linkDel(n string) {
-	loopLock.Lock()
-	defer loopLock.Unlock()
-	delete(linkMap, n)
-}
-func linkQuery(n string) string {
-	loopLock.Lock()
-	defer loopLock.Unlock()
-	return linkMap[n]
-}
-
 // 封装连接逻辑
 func dialTCP(proxyTools *SunnyProxy.Proxy, remoteAddr string, outRouterIP *net.TCPAddr) (net.Conn, error) {
 	return proxyTools.DialWithTimeout("tcp", remoteAddr, 2*time.Second, outRouterIP)
@@ -658,12 +641,11 @@ func (s *proxyRequest) MustTcpProcessing(Tag string) {
 		s.releaseTcp()
 		if RemoteTCP != nil {
 			_ = RemoteTCP.Close()
-			linkDel(RemoteTCP.LocalAddr().String())
+			loop.Un(RemoteTCP)
 		}
 	}()
-
 	if RemoteTCP != nil {
-		linkAdd(s.Conn.RemoteAddr().String(), RemoteTCP.LocalAddr().String())
+		loop.Add(RemoteTCP)
 	}
 	if RemoteTCP != nil && Tag == public.TagTcpSSLAgreement {
 		tlsConn := tls.Client(RemoteTCP, s.TlsConfig)
@@ -807,31 +789,29 @@ func (s *proxyRequest) transparentProcessing() {
 
 // 请求是否环路
 func (s *proxyRequest) isLoop() bool {
-	_, port, _ := public.SplitHostPort(s.RwObj.RemoteAddr().String())
-	ok := CrossCompiled.IsLoopRequest(port, s.Global.port)
-	if ok {
-		link := linkQuery(s.Conn.RemoteAddr().String())
-		if link != "" {
-			p := CrossCompiled.LoopRemotePort(link)
-			if p < 1 {
-				return false
-			}
-		}
-	}
-	return ok
+	return loop.Check(s.RwObj, s.Global.port)
 }
 func (s *proxyRequest) targetIsInterfaceAdders() bool {
-	if int(s.Target.Port) != s.Global.port {
+	if s.Target.Port != s.Global.port {
 		return false
 	}
-	if s.Target.Host == public.CertDownloadHost1 {
+	if strings.HasPrefix(s.Target.Host, "127.") {
 		return true
 	}
-	if s.Target.Host == public.CertDownloadHost2 {
+	switch s.Target.Host {
+	case public.CertDownloadHost1, public.CertDownloadHost2, "::1", "[::1]", "localhost":
 		return true
 	}
 	adders, err := net.InterfaceAddrs()
 	if err != nil {
+		//安卓中无权限读取 net.InterfaceAddrs(),所以这里使用反射获取WIFI内网地址
+		adds := JavaJni.GetWifiAddr()
+		for _, addr := range adds {
+			a := addr.String()
+			if a == s.Target.Host || a == "["+s.Target.Host+"]" || s.Target.Host == "["+a+"]" {
+				return true
+			}
+		}
 		return false
 	}
 	for _, addr := range adders {
@@ -953,7 +933,7 @@ func (s *proxyRequest) httpProcessing(aheadData []byte, Tag string) {
 }
 
 func (s *proxyRequest) isCerDownloadPage(request *http.Request) bool {
-	i := int(s.Target.Port)
+	i := s.Target.Port
 	if i == s.Global.port && (s.targetIsInterfaceAdders() || s.isLoop()) {
 		if request != nil {
 			if request.Header != nil {
@@ -2238,7 +2218,7 @@ type Sunny struct {
 	rootCa                *x509.Certificate //中间件CA证书
 	rootKey               *rsa.PrivateKey   // 证书私钥
 	initCertOK            bool              // 是否已经初始化证书
-	port                  int               //启动的端口号
+	port                  uint16            //启动的端口号
 	Error                 error             //错误信息
 	tcpSocket             *net.Listener     //TcpSocket服务器
 	udpSocket             *net.UDPConn      //UdpSocket服务器
@@ -2551,7 +2531,7 @@ func (s *Sunny) SetCert(ManagerContext int) *Sunny {
 func (s *Sunny) SetPort(Port int) *Sunny {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	s.port = Port
+	s.port = uint16(Port)
 	return s
 }
 
@@ -2586,7 +2566,7 @@ func (s *Sunny) DisableUDP(disable bool) {
 
 // Port 获取端口号
 func (s *Sunny) Port() int {
-	return s.port
+	return int(s.port)
 }
 
 // SetCallback 设置回调地址
@@ -2714,12 +2694,12 @@ func (s *Sunny) Start() *Sunny {
 		return s
 	}
 	CrossCompiled.AddFirewallRule()
-	tcpListen, err := net.Listen("tcp", "0.0.0.0:"+strconv.Itoa(s.port))
+	tcpListen, err := net.Listen("tcp", "0.0.0.0:"+strconv.Itoa(int(s.port)))
 	if err != nil {
 		s.Error = err
 		return s
 	}
-	udpListenAddr, err := net.ResolveUDPAddr("udp", "0.0.0.0:"+strconv.Itoa(s.port))
+	udpListenAddr, err := net.ResolveUDPAddr("udp", "0.0.0.0:"+strconv.Itoa(int(s.port)))
 	if err != nil {
 		s.Error = err
 		_ = tcpListen.Close()
@@ -2937,7 +2917,7 @@ func (s *Sunny) handleClientConn(conn net.Conn) {
 		ProcessCheck.DelTcpConnectInfo(DrivePort)
 		return
 	}
-	req.Pid = CrossCompiled.GetTcpInfoPID(conn.RemoteAddr().String(), s.port)
+	req.Pid = CrossCompiled.GetTcpInfoPID(conn.RemoteAddr().String(), int(s.port))
 	//若不是 通过 NFapi 驱动进来的数据 那么就是通过代理传递过来的数据
 	//进行预读1个字节的数据
 	peek, err := req.RwObj.Peek(1)

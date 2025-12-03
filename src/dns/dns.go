@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qtgolang/SunnyNet/src/SunnyProxy"
 	"github.com/qtgolang/SunnyNet/src/crypto/tls"
 )
 
@@ -187,7 +186,7 @@ func LookupIP(host string, proxy string, outRouterIP *net.TCPAddr, Dial func(net
 	}
 	if dnsServer == dnsServerLocal {
 		dnsLock.Unlock()
-		return localLookupIP(host, proxy, outRouterIP)
+		return localLookupIP(host, proxy)
 	}
 	dnsLock.Unlock()
 	ips, err := lookupIP(host, proxy, outRouterIP, Dial, "ip4")
@@ -202,11 +201,11 @@ func LookupIP(host string, proxy string, outRouterIP *net.TCPAddr, Dial func(net
 		return deepCopyIPs(ips), err
 	}
 	//如果远程没有解析成功,则使用本地DNS解析一次
-	return localLookupIP(host, proxy, outRouterIP)
+	return localLookupIP(host, proxy)
 }
 func lookupIP(host string, proxy string, outRouterIP *net.TCPAddr, Dial func(network, address string, outRouterIP *net.TCPAddr) (net.Conn, error), Net string) ([]net.IP, error) {
 	if proxy == "" {
-		return localLookupIP(host, proxy, outRouterIP)
+		return localLookupIP(host, proxy)
 	}
 	key := proxy + "|" + host
 	dnsLock.Lock()
@@ -234,7 +233,7 @@ func lookupIP(host string, proxy string, outRouterIP *net.TCPAddr, Dial func(net
 	}
 	return _ips, _err
 }
-func localLookupIP(host, proxyHost string, outRouterIP *net.TCPAddr) ([]net.IP, error) {
+func localLookupIP(host, proxyHost string) ([]net.IP, error) {
 	key := ""
 	if proxyHost == "" {
 		key = "_default_" + host
@@ -249,18 +248,7 @@ func localLookupIP(host, proxyHost string, outRouterIP *net.TCPAddr) ([]net.IP, 
 		return ips.ips, nil
 	}
 	dnsLock.Unlock()
-	var _ips []net.IP
-	var _err error
-
-	DefaultResolver := &net.Resolver{
-		PreferGo: true,
-		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
-			var ps SunnyProxy.Proxy
-			return ps.DialWithTimeout(network, address, 3*time.Second, outRouterIP)
-		},
-	}
-	_ips, _err = DefaultResolver.LookupIP(context.Background(), "ip", host)
-
+	_ips, _err := net.LookupIP(host)
 	_ips_ := deepCopyIPs(_ips)
 	if len(_ips_) > 0 {
 		t := &rsIps{ips: _ips_, time: time.Now()}

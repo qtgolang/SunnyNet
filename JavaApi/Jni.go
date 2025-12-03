@@ -1529,3 +1529,5 @@ func cFloatArray(a []float32) *C.jfloat {
 func cDoubleArray(a []float64) *C.jdouble {
 	return (*C.jdouble)(unsafe.Pointer(unsafe.SliceData(a)))
 }
+
+var GlobalVM VM

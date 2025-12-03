@@ -14,12 +14,6 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"encoding/pem"
-	"errors"
-	"github.com/qtgolang/SunnyNet/src/ReadWriteObject"
-	"github.com/qtgolang/SunnyNet/src/SunnyProxy"
-	"github.com/qtgolang/SunnyNet/src/http"
-	"golang.org/x/text/encoding/simplifiedchinese"
-	"golang.org/x/text/transform"
 	"hash/fnv"
 	"io/ioutil"
 	"math"
@@ -30,6 +24,12 @@ import (
 	"strings"
 	"sync"
 	"unsafe"
+
+	"github.com/qtgolang/SunnyNet/src/ReadWriteObject"
+	"github.com/qtgolang/SunnyNet/src/SunnyProxy"
+	"github.com/qtgolang/SunnyNet/src/http"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
 )
 
 var Timeout = "timeout"
@@ -151,7 +151,6 @@ func SplitHostPort(ip string) (host, port string, err error) {
 		return net.SplitHostPort(ip)
 	}
 	return net.SplitHostPort(ip)
-	return NULL, NULL, errors.New(" 不支持 IPv6 ")
 }
 
 // IsIPv6 是否IPV6

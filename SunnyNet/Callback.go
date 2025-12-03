@@ -2,11 +2,12 @@ package SunnyNet
 
 import "C"
 import (
+	"strconv"
+	"strings"
+
 	"github.com/qtgolang/SunnyNet/src/Call"
 	"github.com/qtgolang/SunnyNet/src/dns"
 	"github.com/qtgolang/SunnyNet/src/public"
-	"strconv"
-	"strings"
 )
 
 const debug = "Debug"
@@ -295,7 +296,7 @@ func (s *proxyRequest) noCallback(n ...string) bool {
 		}
 	}
 	request := s.Request
-	Port := int(s.Target.Port)
+	Port := s.Target.Port
 	if (s.Target.Host == "localhost" || s.Target.Host == "127.0.0.1" || s.Target.Host == "::1" || s.Target.Host == "[localhost]" || s.Target.Host == "[127.0.0.1]" || s.Target.Host == "[::1]") && Port == 9229 {
 		//疑似Chrome 开发人员工具正在使用专用的DevTools 即使所有选项卡都关闭，除了空白的新选项卡，它仍可能继续发送
 		//https://superuser.com/questions/1419223/google-chrome-developer-tools-start-knocking-to-127-0-0-1-and-1-ip-on-9229-por

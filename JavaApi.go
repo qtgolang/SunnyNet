@@ -6,6 +6,11 @@ package main
 import "C"
 import (
 	"fmt"
+	"runtime"
+	"sync"
+	"time"
+	"unsafe"
+
 	"github.com/qtgolang/SunnyNet/Api"
 	. "github.com/qtgolang/SunnyNet/JavaApi"
 	"github.com/qtgolang/SunnyNet/JavaApi/sig"
@@ -15,10 +20,6 @@ import (
 	"github.com/qtgolang/SunnyNet/src/ProcessDrv/tun"
 	"github.com/qtgolang/SunnyNet/src/dns"
 	"github.com/qtgolang/SunnyNet/src/public"
-	"runtime"
-	"sync"
-	"time"
-	"unsafe"
 )
 
 /*
@@ -161,11 +162,11 @@ func Java_com_SunnyNet_api_SunnyNetSetCallback(envObj uintptr, clazz uintptr, Su
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
 
-		_env, ret := ___Java_GlobalVM.AttachCurrentThread()
+		_env, ret := GlobalVM.AttachCurrentThread()
 		if ret != JNI_OK {
 			return
 		}
-		defer ___Java_GlobalVM.DetachCurrentThread()
+		defer GlobalVM.DetachCurrentThread()
 
 		_Method := _env.NewString(Conn.Method())
 		_url := _env.NewString(Conn.URL())
@@ -185,11 +186,11 @@ func Java_com_SunnyNet_api_SunnyNetSetCallback(envObj uintptr, clazz uintptr, Su
 	tcpCallback := func(Conn SunnyNet.ConnTCP) {
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		_env, ret := ___Java_GlobalVM.AttachCurrentThread()
+		_env, ret := GlobalVM.AttachCurrentThread()
 		if ret != JNI_OK {
 			return
 		}
-		defer ___Java_GlobalVM.DetachCurrentThread()
+		defer GlobalVM.DetachCurrentThread()
 		_LocalAddr := _env.NewString(Conn.LocalAddress())
 		_RemoteAddr := _env.NewString(Conn.RemoteAddress())
 		_data := _env.NewByteArray(Conn.Body())
@@ -207,11 +208,11 @@ func Java_com_SunnyNet_api_SunnyNetSetCallback(envObj uintptr, clazz uintptr, Su
 	wsCallback := func(Conn SunnyNet.ConnWebSocket) {
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		_env, ret := ___Java_GlobalVM.AttachCurrentThread()
+		_env, ret := GlobalVM.AttachCurrentThread()
 		if ret != JNI_OK {
 			return
 		}
-		defer ___Java_GlobalVM.DetachCurrentThread()
+		defer GlobalVM.DetachCurrentThread()
 
 		_Method := _env.NewString(Conn.Method())
 		_url := _env.NewString(Conn.URL())
@@ -229,11 +230,11 @@ func Java_com_SunnyNet_api_SunnyNetSetCallback(envObj uintptr, clazz uintptr, Su
 	udpCallback := func(Conn SunnyNet.ConnUDP) {
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		_env, ret := ___Java_GlobalVM.AttachCurrentThread()
+		_env, ret := GlobalVM.AttachCurrentThread()
 		if ret != JNI_OK {
 			return
 		}
-		defer ___Java_GlobalVM.DetachCurrentThread()
+		defer GlobalVM.DetachCurrentThread()
 		MessageId := Conn.MessageId()
 		SunnyNetUDP.ResetMessage(MessageId, Conn.Body())
 
@@ -266,11 +267,11 @@ func Java_com_SunnyNet_api_SunnyNetSetCallback(envObj uintptr, clazz uintptr, Su
 	log := func(Context int, info ...any) {
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		_env, ret := ___Java_GlobalVM.AttachCurrentThread()
+		_env, ret := GlobalVM.AttachCurrentThread()
 		if ret != JNI_OK {
 			return
 		}
-		defer ___Java_GlobalVM.DetachCurrentThread()
+		defer GlobalVM.DetachCurrentThread()
 		_logInfo := _env.NewString(fmt.Sprintf("%v", info))
 		_env.CallVoidMethodA(obj, onScriptLogMethodId, Jvalue(Context), Jvalue(_logInfo))
 		_env.DeleteLocalRef(_logInfo)
@@ -278,11 +279,11 @@ func Java_com_SunnyNet_api_SunnyNetSetCallback(envObj uintptr, clazz uintptr, Su
 	code := func(Context int, code []byte) {
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		_env, ret := ___Java_GlobalVM.AttachCurrentThread()
+		_env, ret := GlobalVM.AttachCurrentThread()
 		if ret != JNI_OK {
 			return
 		}
-		defer ___Java_GlobalVM.DetachCurrentThread()
+		defer GlobalVM.DetachCurrentThread()
 		_ScriptCode := _env.NewString(string(code))
 		_env.CallVoidMethodA(obj, onScriptCodeSaveMethodId, Jvalue(Context), Jvalue(_ScriptCode))
 		_env.DeleteLocalRef(_ScriptCode)
@@ -1493,11 +1494,11 @@ func Java_com_SunnyNet_api_SocketClientDial(envObj uintptr, clazz uintptr, Conte
 	f := func(Context, types int, bs []byte) {
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		_env, ret := ___Java_GlobalVM.AttachCurrentThread()
+		_env, ret := GlobalVM.AttachCurrentThread()
 		if ret != JNI_OK {
 			return
 		}
-		defer ___Java_GlobalVM.DetachCurrentThread()
+		defer GlobalVM.DetachCurrentThread()
 		_obj := Jvalue(_env.NewByteArray(bs))
 		_env.CallVoidMethodA(obj, methodId, Jvalue(Context), Jvalue(types), _obj)
 		_env.DeleteLocalRef(Jobject(_obj))
@@ -1608,11 +1609,11 @@ func Java_com_SunnyNet_api_WebsocketHeartbeat(envObj uintptr, clazz uintptr, Con
 					Api.WebsocketHeartbeat(int(Context), int(HeartbeatTime), 0, func(_Context int) {
 						runtime.LockOSThread()
 						defer runtime.UnlockOSThread()
-						_env, ret := ___Java_GlobalVM.AttachCurrentThread()
+						_env, ret := GlobalVM.AttachCurrentThread()
 						if ret != JNI_OK {
 							return
 						}
-						defer ___Java_GlobalVM.DetachCurrentThread()
+						defer GlobalVM.DetachCurrentThread()
 						_env.CallVoidMethodA(obj, methodId, Jvalue(_Context))
 						return
 					})
@@ -1642,11 +1643,11 @@ func Java_com_SunnyNet_api_WebsocketDial(envObj uintptr, clazz uintptr, Context 
 		f := func(Context, types int, bs []byte, messageType int) {
 			runtime.LockOSThread()
 			defer runtime.UnlockOSThread()
-			_env, ret := ___Java_GlobalVM.AttachCurrentThread()
+			_env, ret := GlobalVM.AttachCurrentThread()
 			if ret != JNI_OK {
 				return
 			}
-			defer ___Java_GlobalVM.DetachCurrentThread()
+			defer GlobalVM.DetachCurrentThread()
 			_obj := Jvalue(_env.NewByteArray(bs))
 			_env.CallVoidMethodA(obj, methodId, Jvalue(Context), Jvalue(types), _obj, Jvalue(messageType))
 			_env.DeleteLocalRef(Jobject(_obj))
@@ -1723,11 +1724,11 @@ func Java_com_SunnyNet_api_RedisSubscribe(envObj uintptr, clazz uintptr, Context
 	f := func(message string) {
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		_env, ret := ___Java_GlobalVM.AttachCurrentThread()
+		_env, ret := GlobalVM.AttachCurrentThread()
 		if ret != JNI_OK {
 			return
 		}
-		defer ___Java_GlobalVM.DetachCurrentThread()
+		defer GlobalVM.DetachCurrentThread()
 		_obj := _env.NewString(message)
 		_env.CallVoidMethodA(obj, methodId, Jvalue(_obj))
 		_env.DeleteLocalRef(_obj)
@@ -2074,15 +2075,14 @@ func goJavaInit() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	if ___Java_GlobalVM == 0 {
+	if GlobalVM == 0 {
 		return
 	}
-
-	env, ok := ___Java_GlobalVM.AttachCurrentThread()
+	env, ok := GlobalVM.AttachCurrentThread()
 	if ok != JNI_OK {
 		return
 	}
-	defer ___Java_GlobalVM.DetachCurrentThread() // 退出时再 detach
+	defer GlobalVM.DetachCurrentThread() // 退出时再 detach
 
 	for {
 		time.Sleep(10 * time.Second)
@@ -2116,8 +2116,6 @@ func goJavaInit() {
 		}
 	}
 }
-
-var ___Java_GlobalVM VM
 
 var _classList = make(map[string]Jclass)
 var _classLock sync.Mutex
@@ -2153,8 +2151,8 @@ func classInit(env Env) {
 
 //export JNI_OnLoad
 func JNI_OnLoad(JavaVM uintptr, reserved uintptr) int {
-	___Java_GlobalVM = VM(JavaVM)
-	env, ret := ___Java_GlobalVM.GetEnv(JNI_VERSION_1_6)
+	GlobalVM = VM(JavaVM)
+	env, ret := GlobalVM.GetEnv(JNI_VERSION_1_6)
 	if ret != JNI_OK {
 		return 0
 	}

@@ -4,16 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/qtgolang/SunnyNet/src/SunnyProxy"
-	tls "github.com/qtgolang/SunnyNet/src/crypto/tls"
-	"github.com/qtgolang/SunnyNet/src/dns"
-	"github.com/qtgolang/SunnyNet/src/http"
-	"github.com/qtgolang/SunnyNet/src/public"
 	"net"
 	"strings"
 	"sync"
 	"time"
 	"unsafe"
+
+	"github.com/qtgolang/SunnyNet/src/SunnyProxy"
+	tls "github.com/qtgolang/SunnyNet/src/crypto/tls"
+	"github.com/qtgolang/SunnyNet/src/dns"
+	"github.com/qtgolang/SunnyNet/src/http"
+	"github.com/qtgolang/SunnyNet/src/loop"
+	"github.com/qtgolang/SunnyNet/src/public"
 )
 
 var _mustHTTP11 = make(map[uint32]*time.Time)
@@ -350,6 +352,7 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 		defer func() {
 			if cnn != nil {
 				res.Conn = cnn
+				loop.Add(cnn)
 				if timeout != 0 {
 					_ = cnn.SetDeadline(time.Now().Add(timeout))
 					_ = cnn.SetWriteDeadline(time.Now().Add(timeout))
@@ -365,9 +368,9 @@ func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, 
 				cc.Timeout = 24 * time.Hour
 			}
 		}()
-		_serverIP_func, ok := req.Context().Value(public.Connect_Raw_Address).(func() string)
-		if ok && _serverIP_func != nil {
-			_serverIP_ := _serverIP_func()
+		serveripFunc, ok := req.Context().Value(public.Connect_Raw_Address).(func() string)
+		if ok && serveripFunc != nil {
+			_serverIP_ := serveripFunc()
 			if _serverIP_ != "" {
 				address2, _, err2 := net.SplitHostPort(_serverIP_)
 				if err2 == nil {
@@ -517,6 +520,9 @@ func httpClientPop(client *clientPart) {
 		httpClientMap[client.key] = make(clientList)
 		clients = httpClientMap[client.key]
 	}
+	if client.Conn != nil {
+		loop.Un(client.Conn)
+	}
 	clients[uintptr(unsafe.Pointer(client))] = client
 }
 func httpClientClear() {
@@ -527,6 +533,9 @@ func httpClientClear() {
 	for k, clients := range httpClientMap {
 		for key, client := range clients {
 			if t.Sub(client.time) > o {
+				if client.Conn != nil {
+					loop.Un(client.Conn)
+				}
 				delete(clients, key)
 			}
 		}

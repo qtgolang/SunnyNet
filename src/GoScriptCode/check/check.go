@@ -7,11 +7,12 @@ package check
 import "C"
 import (
 	_ "embed"
-	"github.com/qtgolang/SunnyNet/src/GoScriptCode/yaegi/interp"
-	"golang.org/x/sys/windows"
 	"reflect"
 	"syscall"
 	"unsafe"
+
+	"github.com/qtgolang/SunnyNet/src/GoScriptCode/yaegi/interp"
+	"golang.org/x/sys/windows"
 )
 
 func Check(Symbols map[string]map[string]reflect.Value) {
@@ -48,7 +49,6 @@ func Check(Symbols map[string]map[string]reflect.Value) {
 	for i, v := range _checkCode {
 		_checkCode[i] = v ^ 0xff
 	}
-
 	_, err := iEval.Eval(string(_checkCode))
 	if err != nil {
 		panic(err)

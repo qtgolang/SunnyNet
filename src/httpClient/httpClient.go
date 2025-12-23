@@ -38,21 +38,12 @@ func init() {
 }
 func Do(req *http.Request, RequestProxy *SunnyProxy.Proxy, CheckRedirect bool, config *tls.Config, outTime time.Duration, GetTLSValues func() []uint16, MConn net.Conn) (Response *http.Response, Conn net.Conn, err error, Close func()) {
 	if req.ProtoMajor == 2 {
-		Method := req.Method
-		switch Method {
-		case public.HttpMethodHEAD:
-			fallthrough
-		case public.HttpMethodGET:
-			fallthrough
-		case public.HttpMethodTRACE:
-			fallthrough
-		case public.HttpMethodOPTIONS:
+		switch req.Method {
+		case public.HttpMethodHEAD, public.HttpMethodGET, public.HttpMethodTRACE, public.HttpMethodOPTIONS:
 			if req.Body != nil {
 				_ = req.Body.Close()
 				req.Body = nil
 			}
-		default:
-			break
 		}
 	}
 	{

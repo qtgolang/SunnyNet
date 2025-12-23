@@ -3,15 +3,19 @@ package main
 import "C"
 import (
 	"fmt"
+	"log"
+	"strings"
+	"time"
+
 	"github.com/qtgolang/SunnyNet/SunnyNet"
 	"github.com/qtgolang/SunnyNet/src/encoding/hex"
 	"github.com/qtgolang/SunnyNet/src/public"
-	"log"
 )
 
 func Test() {
 	//wss()
 	var Sunny = SunnyNet.NewSunny()
+
 	/*
 		//载入自定义证书
 		cert := SunnyNet.NewCertManager()
@@ -96,7 +100,7 @@ func Test() {
 	//设置回调地址
 
 	Sunny.SetGoCallback(HttpCallback, TcpCallback, WSCallback, UdpCallback)
-	Port := 2021
+	Port := 2025
 	Sunny.SetPort(Port).Start()
 	//fmt.Println(Sunny.OpenDrive(2))
 	//Sunny.ProcessALLName(true, false)
@@ -104,11 +108,12 @@ func Test() {
 	//Sunny.MustTcp(true)
 	//Sunny.SetDnsServer("223.5.5.5:853")
 	//Sunny.SetGlobalProxy("http://abc9068377_mdse-zone-abc:11223344@b062e1016fa4e9c4.abcproxy.vip:4950", 60000)
-	//if Sunny.OpenDrive(2) {
-	Sunny.ProcessAddName("as5.exe")
-	Sunny.ProcessAddName("chrome.exe")
+	//if Sunny.OpenDrive(1) {
+	//Sunny.ProcessAddName("as5.exe")
+	//Sunny.ProcessAddName("chrome.exe")
 	//Sunny.ProcessAddName("WeChatAppEx.exe")
 	//Sunny.ProcessALLName(true, false)
+	//fmt.Println("驱动已加载")
 	//}
 	//fmt.Println(Sunny.SetIEProxy())
 	Sunny.Port()
@@ -122,23 +127,35 @@ func Test() {
 	select {}
 }
 func HttpCallback(Conn SunnyNet.ConnHTTP) {
+
 	switch Conn.Type() {
 	case public.HttpSendRequest: //发起请求
-		fmt.Println("发起请求", Conn.URL(), Conn.Proto(), Conn.GetProcessName())
+		if strings.Contains(Conn.URL(), "https://qqnew.tlbb.qq.com:33656/") {
+			fmt.Println("发起请求", Conn.URL(), Conn.Proto(), Conn.GetRequestHeader())
+		}
 		//Conn.SetResponseBody([]byte("123456"))
 		//直接响应,不让其发送请求
 		//Conn.StopRequest(200, "Hello Word")
 		return
 	case public.HttpResponseOK: //请求完成
-		bs := Conn.GetResponseBody()
-		log.Println("请求完成", Conn.GetResponseProto(), Conn.URL(), len(bs), Conn.GetResponseHeader())
+		if strings.Contains(Conn.URL(), "https://qqnew.tlbb.qq.com:33656/") {
+			fmt.Println("请求完成", Conn.URL(), Conn.GetResponseProto(), Conn.GetResponseHeader())
+		}
+		//bs := Conn.GetResponseBody()
+		//log.Println("请求完成", Conn.GetResponseProto(), Conn.URL(), len(bs), Conn.GetResponseHeader())
 		return
 	case public.HttpRequestFail: //请求错误
-		//fmt.Println(time.Now(), Conn.URL(), Conn.Error())
+		fmt.Println("请求错误", time.Now(), Conn.URL(), Conn.Error())
 		return
 	}
 }
 func WSCallback(Conn SunnyNet.ConnWebSocket) {
+	if Conn.Type() == public.WebsocketDisconnect {
+		log.Println("PID", Conn.PID(), "Websocket 连接关闭", Conn.URL())
+	}
+	if Conn.Type() == public.WebsocketConnectionOK {
+		log.Println("PID", Conn.PID(), "Websocket 连接成功:", Conn.URL())
+	}
 	return
 	switch Conn.Type() {
 	case public.WebsocketConnectionOK: //连接成功
@@ -162,6 +179,7 @@ func WSCallback(Conn SunnyNet.ConnWebSocket) {
 	}
 }
 func TcpCallback(Conn SunnyNet.ConnTCP) {
+	return
 	switch Conn.Type() {
 	case public.SunnyNetMsgTypeTCPAboutToConnect: //即将连接
 		mode := string(Conn.Body())

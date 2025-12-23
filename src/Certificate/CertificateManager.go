@@ -9,9 +9,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/qtgolang/SunnyNet/src/crypto/pkcs"
-	"github.com/qtgolang/SunnyNet/src/crypto/tls"
-	"github.com/qtgolang/SunnyNet/src/public"
 	"io/ioutil"
 	"net"
 	"os"
@@ -19,6 +16,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/qtgolang/SunnyNet/src/crypto/pkcs"
+	"github.com/qtgolang/SunnyNet/src/crypto/tls"
+	"github.com/qtgolang/SunnyNet/src/public"
 )
 
 type CertManager struct {
@@ -58,6 +59,7 @@ func (c *CertManager) Context() int {
 	defer Lock.Unlock()
 	if c.context == 0 {
 		c.context = NewMessageId()
+		Map[c.context] = c
 	}
 	return c.context
 }

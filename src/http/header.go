@@ -5,14 +5,15 @@
 package http
 
 import (
-	"github.com/qtgolang/SunnyNet/src/http/httptrace"
-	"github.com/qtgolang/SunnyNet/src/http/internal/ascii"
-	"github.com/qtgolang/SunnyNet/src/internal/textproto"
 	"io"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/qtgolang/SunnyNet/src/http/httptrace"
+	"github.com/qtgolang/SunnyNet/src/http/internal/ascii"
+	"github.com/qtgolang/SunnyNet/src/internal/textproto"
 
 	"golang.org/x/net/http/httpguts"
 )
@@ -63,6 +64,14 @@ func (h Header) Get(key string) string {
 	for k, v := range h {
 		if strings.EqualFold(k, key) {
 			if len(v) > 0 {
+				if strings.EqualFold("host", key) {
+					if strings.HasSuffix(v[0], ":-1") || strings.HasSuffix(v[0], ":0") {
+						clean := strings.TrimSuffix(v[0], ":-1")
+						clean = strings.TrimSuffix(clean, ":0")
+						h[k] = []string{clean}
+						return clean
+					}
+				}
 				return v[0]
 			}
 		}

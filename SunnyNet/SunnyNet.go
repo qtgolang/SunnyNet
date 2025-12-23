@@ -38,7 +38,6 @@ import (
 	"github.com/qtgolang/SunnyNet/src/httpClient"
 	"github.com/qtgolang/SunnyNet/src/loop"
 	"github.com/qtgolang/SunnyNet/src/public"
-	"github.com/qtgolang/SunnyNet/src/websocket"
 )
 
 func init() {
@@ -757,20 +756,14 @@ func (s *proxyRequest) transparentProcessing() {
 		}
 		//将地址写到请求中间件连接信息中
 		s.Target.Parse(serverName, public.HttpsDefaultPort)
-		var certificate *tls.Certificate
-		var er error
-		if s.isLoop() {
-			certificate, _, er = WhoisLoopCache(s.Global, nil, s.Target.String(), s.Global.rootCa, s.Global.rootKey)
-		} else {
-			certificate, _, er = WhoisCache(s.Global, nil, "null", s.Target.String(), s.Global.rootCa, s.Global.rootKey)
-		}
+		res, er := s.Global.cache.Get(s.Target, "", s.isLoop)
 		//进行生成证书，用于服务器返回握手信息
 		if er != nil {
 			_ = T.Close()
 			return
 		}
 		//将证书和域名信息设置到TLS客户端中
-		cfg := &tls.Config{Certificates: []tls.Certificate{*certificate}, ServerName: HttpCertificate.ParsingHost(s.Target.String()), InsecureSkipVerify: true}
+		cfg := &tls.Config{Certificates: []tls.Certificate{*res.Cert}, ServerName: HttpCertificate.ParsingHost(s.Target.String()), InsecureSkipVerify: true}
 		T.SetServer(cfg)
 		//进行与客户端握手
 		e = T.ServerHandshake(msg)
@@ -1054,23 +1047,15 @@ func (s *proxyRequest) doRequest() error {
 	do, n, err, Close = httpClient.Do(s.Request, s.Proxy, false, s.TlsConfig, s.SendTimeout, s.getTLSValues, s.Conn)
 	if err == nil && do != nil {
 		if s.rawTarget != 0 {
-			whoisLock.Lock()
-			obj := httpTypeMap[s.rawTarget]
-			if obj != nil {
-				if obj._type == whoisUndefined {
-					obj._time = time.Now()
-					if s.Request.URL.Scheme != "https" {
-						obj._type = whoisNoHTTPS
-					} else {
-						if do.ProtoMajor == 2 {
-							obj._type = whoisHTTPS2
-						} else {
-							obj._type = whoisHTTPS1
-						}
-					}
+			if s.Request.URL.Scheme != "https" {
+				s.Global.cache.updateType(s.rawTarget, whoisNoHTTPS)
+			} else {
+				if do.ProtoMajor == 2 {
+					s.Global.cache.updateType(s.rawTarget, whoisHTTPS2)
+				} else {
+					s.Global.cache.updateType(s.rawTarget, whoisHTTPS1)
 				}
 			}
-			whoisLock.Unlock()
 		}
 	}
 	s.Response.Conn = n
@@ -1130,7 +1115,6 @@ func (s *proxyRequest) https() {
 		_ = tlsConn.Close()
 		tlsConn = nil
 	}()
-	host := s.Target.String()
 	//设置1秒的超时 来判断是否 https 请求 因为正常的非HTTPS TCP 请求也会进入到这里来，需要判断一下
 	_ = tlsConn.SetDeadline(time.Now().Add(1 * time.Second))
 	//取出第一个字节，判断是否TLS
@@ -1146,66 +1130,47 @@ func (s *proxyRequest) https() {
 		//得到握手信息后 恢复30秒的读写超时
 		_ = tlsConn.SetDeadline(time.Now().Add(30 * time.Second))
 		if err == nil {
-			var certificate *tls.Certificate
-			var DNSNames []string
-			if !s.targetIsInterfaceAdders() {
-				res, cert := ClientIsHttps(s.Target.String())
-				if res == whoisUndefined {
-					res, cert = ClientRequestIsHttps(s.Global, s.Target.String(), serverName)
+			res, _ := s.Global.cache.Get(s.Target, serverName, func() bool {
+				if s.targetIsInterfaceAdders() {
+					return true
 				}
-				if res == whoisNoHTTPS {
-					_ = s.RwObj.Close()
-					return
-				} else if res == whoisUndefined {
-					s.rawTarget = public.SumHashCode(s.Target.String())
-				}
-				if res == whoisHTTPS1 {
-					tlsConfig.NextProtos = public.HTTP1NextProtos
-				} else { //res == whoisHTTPS2
-					tlsConfig.NextProtos = public.HTTP2NextProtos
-				}
-				name := ""
-				if serverName != "" {
-					name = fmt.Sprintf("%s:%d", serverName, s.Target.Port)
-				}
-				if s.isLoop() {
-					certificate, DNSNames, _ = WhoisLoopCache(s.Global, cert, host, s.Global.rootCa, s.Global.rootKey)
-				} else {
-					certificate, DNSNames, _ = WhoisCache(s.Global, cert, name, host, s.Global.rootCa, s.Global.rootKey)
-				}
-				isRules := s.Global.tcpRules(serverName, s.Target.Host, DNSNames...)
-				if isRules {
-					if s.Global.disableTCP {
-						return
-					}
-					s.NoRepairHttp = true
-					s.RwObj = ReadWriteObject.NewReadWriteObject(newObjHook(s.RwObj, hook.Bytes()))
-					s.MustTcpProcessing(public.TagMustTCP)
-					return
-				}
-			} else {
-				certificate, DNSNames, _ = WhoisLoopCache(s.Global, nil, host, s.Global.rootCa, s.Global.rootKey)
+				return s.isLoop()
+			})
+			if res.NeedClose {
+				_ = s.RwObj.Close()
+				return
 			}
+			if res.IsRules {
+				if s.Global.disableTCP {
+					return
+				}
+				s.NoRepairHttp = true
+				s.RwObj = ReadWriteObject.NewReadWriteObject(newObjHook(s.RwObj, hook.Bytes()))
+				s.MustTcpProcessing(public.TagMustTCP)
+				return
+			}
+			if res.At == whoisUndefined {
+				s.rawTarget = res.HashCode
+			}
+			tlsConfig.NextProtos = res.NextProto
 			ServerName := s.Target.String()
-			for _, v := range DNSNames {
+			for _, v := range res.DNSNames {
 				if ip := net.ParseIP(v); ip == nil {
 					if !strings.Contains(v, "*") {
 						ServerName = v
-						//s.Target.Parse(v, 0)
 					}
 				}
 			}
-			if certificate == nil {
+			if res.Cert == nil {
 				err = noHttps
 			} else {
-				tlsConfig.Certificates = []tls.Certificate{*certificate}
+				tlsConfig.Certificates = []tls.Certificate{*res.Cert}
 				if serverName != "" {
 					tlsConfig.ServerName = serverName
 				} else {
 					tlsConfig.ServerName = ServerName
 				}
 				tlsConfig.InsecureSkipVerify = true
-				//tlsConfig.CipherSuites=
 				//继续握手
 				err = tlsConn.ServerHandshake(HelloMsg)
 				if err != nil {
@@ -1289,347 +1254,6 @@ func (s *proxyRequest) https() {
 var clientHandshakeFail = `与客户端握手失败`
 var noHttps = errors.New("No HTTPS ")
 
-func (s *proxyRequest) handleWss() bool {
-	if s.Request == nil || s.Request.Header == nil {
-		return true
-	}
-	if s.Request.ProtoMajor != 1 {
-		return false
-	}
-	//判断是否是websocket的请求体 如果不是直接返回继续正常处理请求
-
-	ok := strings.ToLower(s.Request.Header.Get("Upgrade")) == "websocket"
-	if !ok {
-		m := s.Request.Header["upgrade"]
-		if len(m) > 0 {
-			ok = strings.ToLower(m[0]) == "websocket"
-		}
-	}
-	if ok {
-		Method := "wss"
-		Url := s.Request.URL.String()
-		if strings.HasPrefix(Url, "net://") || strings.HasPrefix(Url, "http://") {
-			Method = "ws"
-		}
-		var dialer *websocket.Dialer
-		if s.Request.URL.Scheme == "https" {
-			s.TlsConfig.NextProtos = []string{"http/1.1"}
-			dialer = &websocket.Dialer{TLSClientConfig: s.TlsConfig}
-		} else {
-			dialer = &websocket.Dialer{}
-		}
-		//发送请求
-		Server, r, er := dialer.ConnDialContext(s.Request, s.Proxy, s.outRouterIP)
-		ip, _ := s.Request.Context().Value(public.SunnyNetServerIpTags).(string)
-		if ip != "" {
-			s.Response.ServerIP = ip
-		} else {
-			s.Response.ServerIP = "unknown"
-		}
-		s.Response.Response = r
-		defer func() {
-			if Server != nil {
-				_ = Server.Close()
-			}
-		}()
-		if er != nil {
-			//如果发送错误
-			s.Error(er, true)
-			return true
-		}
-		s.Response.ServerIP = Server.RemoteAddr().String()
-		_ = s.Conn.SetDeadline(time.Time{})
-		//通知http请求完成回调
-		s.CallbackBeforeResponse()
-		//将当前客户端的连接升级为Websocket会话
-		upgrade := &websocket.Upgrader{}
-		Client, er := upgrade.UpgradeClient(s.Request, r, s.RwObj)
-		if er != nil {
-			return true
-		}
-		defer func() {
-			if Client != nil {
-				_ = Client.Close()
-			}
-		}()
-		var sc sync.Mutex
-		var wg sync.WaitGroup
-		wg.Add(1)
-		//开始转发消息
-		receive := func() {
-			as := &public.WebsocketMsg{Mt: 255, Server: Server, Client: Client, Sync: &sc}
-			MessageId := 0
-			Server.SetCloseHandler(func(code int, text string) error {
-				message := websocket.FormatCloseMessage(code, text)
-				as1 := &public.WebsocketMsg{Mt: websocket.CloseMessage, Server: Server, Client: Client, Sync: &sc}
-				as1.Data.Write(message)
-				//构造一个新的MessageId
-				MessageId1 := NewMessageId()
-				//储存对象
-				messageIdLock.Lock()
-				wsStorage[MessageId1] = as1
-				httpStorage[MessageId1] = s
-				messageIdLock.Unlock()
-				defer func() {
-					as1.Data.Reset()
-					messageIdLock.Lock()
-					wsStorage[MessageId1] = nil
-					delete(wsStorage, MessageId1)
-					httpStorage[MessageId1] = nil
-					delete(httpStorage, MessageId1)
-					messageIdLock.Unlock()
-				}()
-				s.CallbackWssRequest(public.WebsocketServerSend, Method, Url, as1, MessageId1)
-				_ = Client.WriteControl(websocket.CloseMessage, as1.Data.Bytes(), time.Now().Add(time.Second*30))
-				return nil
-			})
-			Server.SetPingHandler(func(appData []byte) error {
-				as1 := &public.WebsocketMsg{Mt: websocket.PingMessage, Server: Server, Client: Client, Sync: &sc}
-				as1.Data.Write(appData)
-				//构造一个新的MessageId
-				MessageId1 := NewMessageId()
-				//储存对象
-				messageIdLock.Lock()
-				wsStorage[MessageId1] = as1
-				httpStorage[MessageId1] = s
-				messageIdLock.Unlock()
-				defer func() {
-					as1.Data.Reset()
-					messageIdLock.Lock()
-					wsStorage[MessageId1] = nil
-					delete(wsStorage, MessageId1)
-					httpStorage[MessageId1] = nil
-					delete(httpStorage, MessageId1)
-					messageIdLock.Unlock()
-				}()
-				s.CallbackWssRequest(public.WebsocketServerSend, Method, Url, as1, MessageId1)
-				_ = Client.WriteMessage(websocket.PingMessage, as1.Data.Bytes())
-				return nil
-			})
-			Server.SetPongHandler(func(appData []byte) error {
-				as1 := &public.WebsocketMsg{Mt: websocket.PongMessage, Server: Server, Client: Client, Sync: &sc}
-				as1.Data.Write(appData)
-				//构造一个新的MessageId
-				MessageId1 := NewMessageId()
-				//储存对象
-				messageIdLock.Lock()
-				wsStorage[MessageId1] = as1
-				httpStorage[MessageId] = s
-				messageIdLock.Unlock()
-				defer func() {
-					as1.Data.Reset()
-					messageIdLock.Lock()
-					wsStorage[MessageId1] = nil
-					delete(wsStorage, MessageId1)
-					httpStorage[MessageId1] = nil
-					delete(httpStorage, MessageId1)
-					messageIdLock.Unlock()
-				}()
-				s.CallbackWssRequest(public.WebsocketServerSend, Method, Url, as1, MessageId1)
-				_ = Client.WriteMessage(websocket.PongMessage, as1.Data.Bytes())
-				return nil
-			})
-			for {
-				{
-					//清除上次的 MessageId
-					messageIdLock.Lock()
-					wsStorage[MessageId] = nil
-					delete(wsStorage, MessageId)
-					httpStorage[MessageId] = nil
-					delete(httpStorage, MessageId)
-					messageIdLock.Unlock()
-
-					//构造一个新的MessageId
-					MessageId = NewMessageId()
-
-					//储存对象
-					messageIdLock.Lock()
-					httpStorage[MessageId] = s
-					wsStorage[MessageId] = as
-					messageIdLock.Unlock()
-				}
-				as.Data.Reset()
-				mt, message, err := Server.ReadMessage()
-				if message == nil && err == nil {
-					as.Data.Reset()
-					continue
-				}
-				if err != nil {
-					as.Data.Reset()
-					break
-				}
-				as.Data.Write(message)
-				as.Mt = mt
-				s.CallbackWssRequest(public.WebsocketServerSend, Method, Url, as, MessageId)
-				sc.Lock()
-				//发到客户端
-				err = Client.WriteMessage(as.Mt, as.Data.Bytes())
-				sc.Unlock()
-				if err != nil {
-					as.Data.Reset()
-					break
-				}
-			}
-			messageIdLock.Lock()
-			wsStorage[MessageId] = nil
-			delete(wsStorage, MessageId)
-			httpStorage[MessageId] = nil
-			delete(httpStorage, MessageId)
-			messageIdLock.Unlock()
-			_ = Client.Close()
-			_ = Server.Close()
-			wg.Done()
-		}
-		as := &public.WebsocketMsg{Mt: 255, Server: Server, Client: Client, Sync: &sc}
-		MessageId := NewMessageId()
-		messageIdLock.Lock()
-		wsStorage[MessageId] = as
-		httpStorage[MessageId] = s
-		wsClientStorage[s.Theology] = as
-		messageIdLock.Unlock()
-		s.CallbackWssRequest(public.WebsocketConnectionOK, Method, Url, as, MessageId)
-		go receive()
-
-		// Client > Server
-		Client.SetCloseHandler(func(code int, text string) error {
-			message := websocket.FormatCloseMessage(code, text)
-			as1 := &public.WebsocketMsg{Mt: websocket.CloseMessage, Server: Server, Client: Client, Sync: &sc}
-			as1.Data.Write(message)
-			//构造一个新的MessageId
-			MessageId1 := NewMessageId()
-			//储存对象
-			messageIdLock.Lock()
-			wsStorage[MessageId1] = as1
-			httpStorage[MessageId1] = s
-			messageIdLock.Unlock()
-			defer func() {
-				as1.Data.Reset()
-				messageIdLock.Lock()
-				wsStorage[MessageId1] = nil
-				delete(wsStorage, MessageId1)
-				httpStorage[MessageId1] = nil
-				delete(httpStorage, MessageId1)
-				messageIdLock.Unlock()
-			}()
-			s.CallbackWssRequest(public.WebsocketUserSend, Method, Url, as1, MessageId1)
-			_ = Server.WriteControl(websocket.CloseMessage, as1.Data.Bytes(), time.Now().Add(time.Second*30))
-			return nil
-		})
-		Client.SetPingHandler(func(appData []byte) error {
-			as1 := &public.WebsocketMsg{Mt: websocket.PingMessage, Server: Server, Client: Client, Sync: &sc}
-			as1.Data.Write(appData)
-			//构造一个新的MessageId
-			MessageId1 := NewMessageId()
-			//储存对象
-			messageIdLock.Lock()
-			wsStorage[MessageId1] = as1
-			httpStorage[MessageId1] = s
-			messageIdLock.Unlock()
-			defer func() {
-				as1.Data.Reset()
-				messageIdLock.Lock()
-				wsStorage[MessageId1] = nil
-				delete(wsStorage, MessageId1)
-				httpStorage[MessageId1] = nil
-				delete(httpStorage, MessageId1)
-				messageIdLock.Unlock()
-			}()
-			s.CallbackWssRequest(public.WebsocketUserSend, Method, Url, as1, MessageId1)
-			_ = Server.WriteMessage(websocket.PingMessage, as1.Data.Bytes())
-			return nil
-		})
-		Client.SetPongHandler(func(appData []byte) error {
-			as1 := &public.WebsocketMsg{Mt: websocket.PongMessage, Server: Server, Client: Client, Sync: &sc}
-			as1.Data.Write(appData)
-			//构造一个新的MessageId
-			MessageId1 := NewMessageId()
-			//储存对象
-			messageIdLock.Lock()
-			wsStorage[MessageId1] = as1
-			httpStorage[MessageId1] = s
-			messageIdLock.Unlock()
-			defer func() {
-				as1.Data.Reset()
-				messageIdLock.Lock()
-				wsStorage[MessageId1] = nil
-				delete(wsStorage, MessageId1)
-				httpStorage[MessageId1] = nil
-				delete(httpStorage, MessageId1)
-				messageIdLock.Unlock()
-			}()
-			s.CallbackWssRequest(public.WebsocketUserSend, Method, Url, as1, MessageId1)
-			_ = Server.WriteMessage(websocket.PongMessage, as1.Data.Bytes())
-			return nil
-		})
-
-		for {
-			{
-				//清除上次的 MessageId
-				messageIdLock.Lock()
-				wsStorage[MessageId] = nil
-				delete(wsStorage, MessageId)
-				httpStorage[MessageId] = nil
-				delete(httpStorage, MessageId)
-				messageIdLock.Unlock()
-
-				//构造一个新的MessageId
-				MessageId = NewMessageId()
-
-				//储存对象
-				messageIdLock.Lock()
-				wsStorage[MessageId] = as
-				httpStorage[MessageId] = s
-				messageIdLock.Unlock()
-			}
-			as.Data.Reset()
-			mt, message1, err := Client.ReadMessage()
-			if message1 == nil && err == nil {
-				as.Data.Reset()
-				continue
-			}
-			as.Data.Write(message1)
-			as.Mt = mt
-			if err != nil {
-				_ = Client.Close()
-				_ = Server.Close()
-				as.Data.Reset()
-				s.CallbackWssRequest(public.WebsocketDisconnect, Method, Url, as, MessageId)
-				break
-			}
-			s.CallbackWssRequest(public.WebsocketUserSend, Method, Url, as, MessageId)
-			sc.Lock()
-			if as.Mt != websocket.BinaryMessage {
-				//发到服务器
-				err = Server.WriteMessage(as.Mt, as.Data.Bytes())
-			} else {
-				err = Server.WriteFullMessage(as.Mt, as.Data.Bytes())
-			}
-			sc.Unlock()
-			if err != nil {
-				_ = Client.Close()
-				_ = Server.Close()
-				as.Data.Reset()
-				s.CallbackWssRequest(public.WebsocketDisconnect, Method, Url, as, MessageId)
-				break
-			}
-		}
-		wg.Wait()
-		messageIdLock.Lock()
-
-		wsStorage[MessageId] = nil
-		delete(wsStorage, MessageId)
-
-		httpStorage[MessageId] = nil
-		delete(httpStorage, MessageId)
-
-		wsClientStorage[s.Theology] = nil
-		delete(wsClientStorage, s.Theology)
-
-		messageIdLock.Unlock()
-		return true
-	}
-	return false
-}
 func (s *Sunny) proxyRules(Host string) bool {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -2242,6 +1866,7 @@ type Sunny struct {
 	mustTcpRegexp         *regexp.Regexp      //强制走TCP规则,如果 isMustTcp 打开状态,本功能则无效
 	mustTcpRulesAllow     bool                // true 表示 mustTcpRegexp 规则内的强制走TCP，反之不在规则内的强制都TCP
 	isRun                 bool                //是否在运行中
+	cache                 *Cache
 	SunnyContext          int
 	isRandomTLS           bool   //是否随机使用TLS指纹
 	userScriptCode        []byte //用户脚本代码
@@ -2693,6 +2318,11 @@ func (s *Sunny) Start() *Sunny {
 	if !s.initCertOK {
 		return s
 	}
+
+	if s.cache == nil {
+		s.cache = newCache(s)
+	}
+	s.cache.StartJanitor()
 	CrossCompiled.AddFirewallRule()
 	tcpListen, err := net.Listen("tcp", "0.0.0.0:"+strconv.Itoa(int(s.port)))
 	if err != nil {
@@ -2737,6 +2367,9 @@ func (s *Sunny) Close() *Sunny {
 		_ = s.udpSocket.Close()
 	}
 	s.lock.Lock()
+	if s.cache != nil {
+		s.cache.StopJanitor()
+	}
 	for k, conn := range s.connList {
 		_ = conn.Close()
 		delete(s.connList, k)

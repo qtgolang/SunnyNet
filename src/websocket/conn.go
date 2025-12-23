@@ -624,10 +624,12 @@ func (w *messageWriter) flushFrame(final bool, extra []byte) error {
 
 	if !c.isServer {
 		key := newMaskKey()
+		bufPayloadLen := w.pos - maxFrameHeaderSize
 		copy(c.writeBuf[maxFrameHeaderSize-4:], key[:])
 		maskBytes(key, 0, c.writeBuf[maxFrameHeaderSize:w.pos])
 		if len(extra) > 0 {
-			return w.endMessage(c.writeFatal(errors.New("websocket: internal error, extra used in client mode")))
+			maskBytes(key, bufPayloadLen, extra)
+			//return w.endMessage(c.writeFatal(errors.New("websocket: internal error, extra used in client mode")))
 		}
 	}
 
@@ -778,7 +780,22 @@ func (c *Conn) WritePreparedMessage(pm *PreparedMessage) error {
 // WriteMessage is a helper method for getting a writer using NextWriter,
 // writing the message and closing the writer.
 func (c *Conn) WriteMessage(messageType int, data []byte) error {
-	if c.isServer && (c.newCompressionWriter == nil || !c.enableWriteCompression) {
+	/*
+		Ps: 2025-12-21
+
+			之前这里是因为
+				https://github.com/gorilla/websocket 这个库
+			不支持客户端携带数据发送,只能分片发送(没有对 携带的数据进行 mask 而是直接返回错误)
+
+			但是由于部分服务器不支持分片,所以这里（未指定压缩的情况下）统一改成 < 一帧 > 发送
+
+			我手动修改一下函数,不太确实是否修改正确了?
+
+			反正我测试了几个小程序的wss是没有问题
+
+			具体有没有什么异常,再看吧!
+	*/
+	if c.newCompressionWriter == nil || !c.enableWriteCompression {
 		// Fast path with no allocations and single frame.
 		var mw messageWriter
 		if err := c.beginMessage(&mw, messageType); err != nil {
@@ -789,7 +806,6 @@ func (c *Conn) WriteMessage(messageType int, data []byte) error {
 		data = data[n:]
 		return mw.flushFrame(true, data)
 	}
-
 	w, err := c.NextWriter(messageType)
 	if err != nil {
 		return err
@@ -799,26 +815,6 @@ func (c *Conn) WriteMessage(messageType int, data []byte) error {
 	}
 	//c.Window.Writer.UpdateWindow(data)
 	return w.Close()
-}
-func (c *Conn) WriteFullMessage(messageType int, data []byte) error {
-	a1 := len(data) < cap(c.writeBuf)
-	a2 := !c.enableWriteCompression
-	if a1 || a2 {
-		return c.WriteMessage(messageType, data)
-	}
-	var mw messageWriter
-	if err := c.beginMessage(&mw, messageType); err != nil {
-		return err
-	}
-	n := copy(c.writeBuf[mw.pos:], data)
-	mw.pos += n
-	data = data[n:]
-	II := c.isServer
-	c.isServer = true
-	defer func() {
-		c.isServer = II
-	}()
-	return mw.flushFrame(true, data)
 }
 
 // SetWriteDeadline sets the write deadline on the underlying network

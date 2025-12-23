@@ -1,7 +1,6 @@
 package SunnyNet
 
 import (
-	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -9,178 +8,306 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
+	"net"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/qtgolang/SunnyNet/src/HttpCertificate"
 	"github.com/qtgolang/SunnyNet/src/SunnyProxy"
 	"github.com/qtgolang/SunnyNet/src/crypto/tls"
 	"github.com/qtgolang/SunnyNet/src/dns"
 	"github.com/qtgolang/SunnyNet/src/public"
-	"io"
-	"net"
-	"strings"
-	"sync"
-	"time"
+	"golang.org/x/sync/singleflight"
 )
 
-type _whois map[string]*_cert
+type Cache struct {
+	mu    sync.RWMutex
+	data  map[uint32]*entry
+	ttl   time.Duration
+	sunny *Sunny
 
-var whoisLock sync.Mutex
-var whois = make(_whois)
+	getSlots chan struct{}      // 控制Get并发
+	sf       singleflight.Group // 控制同key的update只跑一次
 
-type _certType byte
-type _cert struct {
-	Cert     *tls.Certificate
-	Type     _certType
-	Expire   *time.Time
-	DNSNames []string
+	// janitor 可重启控制
+	janMu       sync.Mutex
+	janRunning  bool
+	stopJanitor chan struct{}
+	janWG       sync.WaitGroup
 }
 
-const (
-	netCert = _certType(iota + 1)
-	localCert
-)
-
-var httpTypeMap = make(map[uint32]*httpTypeInfo)
-
-const whoisUndefined = 0
-const whoisNoHTTPS = 1
-const whoisHTTPS1 = 2
-const whoisHTTPS2 = 3
-
-type httpTypeInfo struct {
-	_type byte
-	_time time.Time
-	_cert *x509.Certificate
-}
-
-func clean() {
-	for {
-		time.Sleep(time.Minute)
-		whoisLock.Lock()
-		for key, v := range httpTypeMap {
-			if time.Now().Sub(v._time) > time.Minute*9 {
-				delete(httpTypeMap, key)
-			}
-		}
-		whoisLock.Unlock()
+func newCache(sunny *Sunny) *Cache {
+	cc := &Cache{
+		data:     make(map[uint32]*entry),
+		ttl:      time.Minute * 10,
+		sunny:    sunny,
+		getSlots: make(chan struct{}, 10),
 	}
-}
-func init() {
-	go clean()
-}
-func ClientIsHttps(server string) (byte, *x509.Certificate) {
-	hashCode := public.SumHashCode(server)
-	whoisLock.Lock()
-	defer whoisLock.Unlock()
-	res := httpTypeMap[hashCode]
-	if res == nil {
-		return whoisUndefined, nil
-	}
-	res._time = time.Now()
-	return res._type, res._cert
+	return cc
 }
 
-/*
-ClientRequestIsHttps
-探测目标服务器是否支持HTTPS，是否支持HTTP2（因为谷歌浏览器或Edge浏览器,在访问http请求时可能会先发送一个https请求判断服务器是否支持https）
-并且
-同时获取服务器提供的证书（主要用于提取证书中的部分信息,用于生成SunnyNet证书）
-*/
-func ClientRequestIsHttps(Sunny *Sunny, targetAddr string, serverName string) (res byte, cert *x509.Certificate) {
-	var obj *httpTypeInfo
-	hashCode := public.SumHashCode(targetAddr)
-	whoisLock.Lock()
-	if httpTypeMap[hashCode] == nil {
-		obj = &httpTypeInfo{_time: time.Now()}
-		httpTypeMap[hashCode] = obj
-	} else {
-		obj = httpTypeMap[hashCode]
+func (c *Cache) StartJanitor() {
+	c.janMu.Lock()
+	if c.janRunning {
+		c.janMu.Unlock()
+		return
 	}
-	whoisLock.Unlock()
-	if obj._type != whoisUndefined {
-		return obj._type, obj._cert
-	}
-	defer func() {
-		if res != whoisUndefined {
-			whoisLock.Lock()
-			if obj._type != whoisUndefined && obj._type != whoisNoHTTPS {
-				obj._time = time.Now()
-				whoisLock.Unlock()
+	c.stopJanitor = make(chan struct{})
+	c.janRunning = true
+	stopCh := c.stopJanitor
+	c.janWG.Add(1)
+	c.janMu.Unlock()
+	go func() {
+		defer c.janWG.Done()
+		ticker := time.NewTicker(c.ttl)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				c.cleanupExpired()
+			case <-stopCh:
 				return
 			}
-			obj._type = res
-			obj._cert = cert
-			obj._time = time.Now()
-			whoisLock.Unlock()
 		}
 	}()
-	var conn net.Conn
-	if dns.IsRemoteDnsServer() {
-		conn, _ = Sunny.proxy.DialWithTimeout("tcp", targetAddr, 2*time.Second, Sunny.outRouterIP)
-	} else {
-		proxyHost, proxyPort, e := net.SplitHostPort(targetAddr)
-		var ips []net.IP
-		var first net.IP
-		if e != nil {
-			return whoisUndefined, nil
-		}
-		ip := net.ParseIP(proxyHost)
-		if ip == nil {
-			first = dns.GetFirstIP(proxyHost, "")
-			if first != nil {
-				conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(first, proxyPort), time.Second*3, Sunny.outRouterIP)
-			}
-			if conn == nil {
-				var ProxyHost string
-				var dial func(network string, addr string, outRouterIP *net.TCPAddr) (net.Conn, error)
-				if Sunny.proxy != nil {
-					ProxyHost = Sunny.proxy.Host
-					dial = Sunny.proxy.Dial
-				}
-				ips, _ = dns.LookupIP(proxyHost, ProxyHost, Sunny.outRouterIP, dial)
-				//优先尝试IPV4
-				for _, _ip := range ips {
-					if _ip2 := _ip.To4(); _ip2 != nil {
-						conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(_ip, proxyPort), 2*time.Second, Sunny.outRouterIP)
-						if conn != nil {
-							dns.SetFirstIP(proxyHost, "", _ip)
-							break
-						}
-					}
-				}
-				//最后尝试IPV6
-				if conn == nil {
-					for _, _ip := range ips {
-						if _ip2 := _ip.To16(); _ip2 != nil {
-							conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(_ip, proxyPort), 2*time.Second, Sunny.outRouterIP)
-							if conn != nil {
-								dns.SetFirstIP(proxyHost, "", _ip)
-								break
-							}
-						}
-					}
-				}
-			}
+}
 
-		} else {
-			conn, _ = Sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(ip, proxyPort), time.Second*3, Sunny.outRouterIP)
+func (c *Cache) StopJanitor() {
+	c.janMu.Lock()
+	if !c.janRunning {
+		c.janMu.Unlock()
+		return
+	}
+	stopCh := c.stopJanitor
+	c.janRunning = false
+	c.stopJanitor = nil
+	c.janMu.Unlock()
+	close(stopCh)
+	c.janWG.Wait()
+}
+
+// entry 缓存内部条目
+type entry struct {
+	typeAt                 byte
+	expireAt               time.Time
+	netCert                *x509.Certificate //服务器响应证书
+	cert                   *tls.Certificate
+	serverName, targetAddr string
+	DNSNames, nextProto    []string
+	isLoop                 bool
+}
+type Result struct {
+	Cert      *tls.Certificate
+	DNSNames  []string
+	NextProto []string
+	NeedClose bool
+	IsRules   bool
+	At        byte
+	HashCode  uint32
+}
+
+// Get 入口：最多10并发；同hashCode只允许一个update；返回结构体避免错位
+func (c *Cache) Get(targetAddr *TargetInfo, serverName string, isLoopFunc func() bool) (Result, error) {
+	hashCode := public.SumHashCode(targetAddr.String() + "/" + serverName)
+	var res Result
+	res.HashCode = hashCode
+	res.NextProto = public.HTTP2NextProtos
+	// 强制配置命中：不走缓存
+	if in := c.getTlsConfig(targetAddr.String()); in != nil {
+		res.Cert = in
+		res.IsRules = c.sunny.tcpRules(serverName, targetAddr.Host)
+		res.At = whoisHTTPS2
+		return res, nil
+	}
+	if in := c.getTlsConfig(serverName); in != nil {
+		res.Cert = in
+		res.IsRules = c.sunny.tcpRules(serverName, targetAddr.Host)
+		res.At = whoisHTTPS2
+		return res, nil
+	}
+	nameKey := fmt.Sprintf("%s:%d", serverName, targetAddr.Port)
+	if in := c.getTlsConfig(nameKey); in != nil {
+		res.Cert = in
+		res.IsRules = c.sunny.tcpRules(serverName, targetAddr.Host)
+		res.At = whoisHTTPS2
+		return res, nil
+	}
+
+	// 命中缓存（带过期判断）
+	if e, ok := c.getValidEntry(hashCode); ok {
+		return c.entryToResult(e, serverName, targetAddr.Host), nil
+	}
+
+	// 同一个hashCode只允许一个update
+	key := strconv.FormatUint(uint64(hashCode), 10)
+	v, err, _ := c.sf.Do(key, func() (any, error) {
+		if e2, ok2 := c.getValidEntry(hashCode); ok2 {
+			r := c.entryToResult(e2, serverName, targetAddr.Host)
+			return r, nil
+		}
+		c.getSlots <- struct{}{}
+		r, err := c.update(hashCode, targetAddr, serverName, isLoopFunc())
+		<-c.getSlots
+		return r, err
+	})
+	r := v.(Result)
+	r.HashCode = hashCode
+	return r, err
+}
+
+// getValidEntry：读取并校验过期；过期就删并返回 miss
+func (c *Cache) getValidEntry(hashCode uint32) (*entry, bool) {
+	now := time.Now()
+	c.mu.RLock()
+	e, ok := c.data[hashCode]
+	c.mu.RUnlock()
+	if !ok || e == nil {
+		return nil, false
+	}
+	// 失效条件：expireAt - 1小时 < now
+	if now.After(e.expireAt.Add(-time.Hour)) {
+		// 双检删除，避免并发误删
+		c.mu.Lock()
+		e2, ok2 := c.data[hashCode]
+		if ok2 && e2 != nil && now.After(e2.expireAt.Add(-time.Hour)) {
+			delete(c.data, hashCode)
+		}
+		c.mu.Unlock()
+		return nil, false
+	}
+
+	return e, true
+}
+
+// entryToResult：统一把缓存条目转成返回结果
+func (c *Cache) entryToResult(e *entry, serverName, host string) Result {
+	var r Result
+	r.Cert = e.cert
+	r.DNSNames = e.DNSNames
+	r.At = e.typeAt
+
+	if r.At == whoisHTTPS1 {
+		r.NextProto = public.HTTP1NextProtos
+	} else {
+		r.NextProto = public.HTTP2NextProtos
+	}
+
+	r.IsRules = c.sunny.tcpRules(serverName, host, e.DNSNames...)
+	return r
+}
+
+// update：真正生成/更新缓存
+func (c *Cache) update(hashCode uint32, targetAddr *TargetInfo, serverName string, isLoop bool) (Result, error) {
+	var (
+		e    *entry
+		name string
+	)
+
+	if !isLoop {
+		cc := c.createCacheEntry(targetAddr.String(), serverName)
+
+		// 不支持HTTPS：直接返回 needClose
+		if cc.typeAt == whoisNoHTTPS {
+			return Result{
+				NeedClose: true,
+				NextProto: public.HTTP1NextProtos,
+				At:        whoisNoHTTPS,
+			}, nil
+		}
+
+		e = &cc
+		name = fmt.Sprintf("%s:%d", serverName, targetAddr.Port)
+	} else {
+		e = &entry{
+			typeAt:     whoisHTTPS1,
+			targetAddr: targetAddr.String(),
+			serverName: serverName,
+			isLoop:     true,
+		}
+		name = serverName
+	}
+
+	// whoisCache：你工程里已有（返回 cert、dnsNames、notAfter、error）
+	cert, dnsNames, notAfter, err := c.whoisCache(e, name, targetAddr.String(), c.sunny.rootCa, c.sunny.rootKey)
+	if err != nil {
+		return Result{}, err
+	}
+
+	e.cert = cert
+	e.DNSNames = dnsNames
+	e.expireAt = notAfter
+
+	// At/NextProto 决策统一放这里
+	at := e.typeAt
+	np := public.HTTP2NextProtos
+	if at == whoisHTTPS1 {
+		np = public.HTTP1NextProtos
+	}
+	e.nextProto = np
+
+	isRules := c.sunny.tcpRules(serverName, targetAddr.Host, e.DNSNames...)
+
+	// 写缓存
+	c.mu.Lock()
+	c.data[hashCode] = e
+	c.mu.Unlock()
+
+	return Result{
+		Cert:      cert,
+		DNSNames:  dnsNames,
+		NextProto: np,
+		NeedClose: false,
+		IsRules:   isRules,
+		At:        at,
+	}, nil
+}
+
+func (c *Cache) updateType(hashCode uint32, Type byte) {
+	c.mu.Lock()
+	a := c.data[hashCode]
+	if a != nil {
+		if a.typeAt == whoisUndefined {
+			a.typeAt = Type
 		}
 	}
+	c.mu.Unlock()
+	return
+}
+
+// cleanupExpired 扫描并清理过期项
+func (c *Cache) cleanupExpired() {
+	now := time.Now()
+
+	c.mu.Lock()
+	for k, e := range c.data {
+		// 过期超过1小时才删除
+		if now.After(e.expireAt.Add(time.Hour)) {
+			delete(c.data, k)
+		}
+	}
+	c.mu.Unlock()
+}
+
+func (c *Cache) createCacheEntry(targetAddr, serverName string) entry {
+	res := entry{typeAt: whoisUndefined, targetAddr: targetAddr, serverName: serverName}
+
+	// 建连
+	conn := c.dialTarget(targetAddr)
 	if conn == nil {
-		return whoisUndefined, nil
+		return res
 	}
-	defer func() {
-		_ = conn.Close()
-	}()
+	defer func() { _ = conn.Close() }()
 
-	if Sunny.proxy != nil {
-		if Sunny.proxy.Host != "" {
-			_ = conn.SetDeadline(time.Now().Add(time.Second * 3))
-		}
-	} else {
-		_ = conn.SetDeadline(time.Now().Add(time.Second * 1))
-	}
+	// 超时设置
+	c.setConnDeadline(conn)
+
+	// TLS 探测
 	var hello *tls.ServerHelloMsg
 	var certificate *x509.Certificate
+
 	config := &tls.Config{
 		InsecureSkipVerify: true,
 		ServerName:         serverName,
@@ -193,205 +320,208 @@ func ClientRequestIsHttps(Sunny *Sunny, targetAddr string, serverName string) (r
 		certificate = _certificate
 		return io.EOF
 	}
-	c := tls.Client(conn, config)
-	err := c.Handshake()
+
+	cc := tls.Client(conn, config)
+	err := cc.Handshake()
+
 	if hello == nil {
-		if err != nil {
-			if strings.Contains(err.Error(), "close") {
-				return whoisNoHTTPS, nil
-			}
+		if err != nil && strings.Contains(err.Error(), "close") {
+			res.typeAt = whoisNoHTTPS
+			return res
 		}
-		return whoisUndefined, nil
+		res.typeAt = whoisUndefined
+		return res
 	}
+
 	isVer := whoisHTTPS1
 	if hello.SupportedVersion == 772 {
 		isVer = whoisHTTPS2
 	}
-	return byte(isVer), certificate
+	res.typeAt = byte(isVer)
+	res.netCert = certificate
+	return res
 }
 
-type virtualConn struct {
-	net.Conn
-	buff bytes.Buffer
+// dialTarget 负责根据你的策略建立连接：remoteDNS直接拨；否则解析优先IPv4最后IPv6
+func (c *Cache) dialTarget(targetAddr string) net.Conn {
+	// 如果是DNS解析服务器，直接本地拨号即可
+	if dns.IsRemoteDnsServer() {
+		conn, _ := c.sunny.proxy.DialWithTimeout("tcp", targetAddr, 2*time.Second, c.sunny.outRouterIP)
+		return conn
+	}
+
+	proxyHost, proxyPort, err := net.SplitHostPort(targetAddr)
+	if err != nil {
+		return nil
+	}
+
+	// 目标本身就是IP，直接拨
+	if ip := net.ParseIP(proxyHost); ip != nil {
+		conn, _ := c.sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(ip, proxyPort), 3*time.Second, c.sunny.outRouterIP)
+		return conn
+	}
+
+	// 先用缓存的首选IP试一次
+	if first := dns.GetFirstIP(proxyHost, ""); first != nil {
+		conn, _ := c.sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(first, proxyPort), 3*time.Second, c.sunny.outRouterIP)
+		if conn != nil {
+			return conn
+		}
+	}
+
+	// 再做一次完整解析
+	var (
+		proxyUpstream string
+		dial          func(network string, addr string, outRouterIP *net.TCPAddr) (net.Conn, error)
+	)
+	if c.sunny.proxy != nil {
+		proxyUpstream = c.sunny.proxy.Host
+		dial = c.sunny.proxy.Dial
+	}
+
+	ips, _ := dns.LookupIP(proxyHost, proxyUpstream, c.sunny.outRouterIP, dial)
+
+	// 优先尝试IPv4
+	for _, ip := range ips {
+		if ip.To4() == nil {
+			continue
+		}
+		conn, _ := c.sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(ip, proxyPort), 2*time.Second, c.sunny.outRouterIP)
+		if conn != nil {
+			dns.SetFirstIP(proxyHost, "", ip)
+			return conn
+		}
+	}
+
+	// 最后尝试IPv6
+	for _, ip := range ips {
+		if ip.To16() == nil || ip.To4() != nil {
+			continue
+		}
+		conn, _ := c.sunny.proxy.DialWithTimeout("tcp", SunnyProxy.FormatIP(ip, proxyPort), 2*time.Second, c.sunny.outRouterIP)
+		if conn != nil {
+			dns.SetFirstIP(proxyHost, "", ip)
+			return conn
+		}
+	}
+
+	return nil
 }
 
-func (v *virtualConn) Read(b []byte) (n int, err error) {
-	a, e := v.Conn.Read(b)
-	return a, e
+func (c *Cache) setConnDeadline(conn net.Conn) {
+	// 原逻辑保持：有代理Host则3秒；没代理或Host空则1秒
+	if c.sunny.proxy != nil && c.sunny.proxy.Host != "" {
+		_ = conn.SetDeadline(time.Now().Add(3 * time.Second))
+		return
+	}
+	_ = conn.SetDeadline(time.Now().Add(1 * time.Second))
 }
-func (v *virtualConn) Write(b []byte) (n int, err error) {
-	v.buff.Write(b)
-	return 0, nil
+
+func (c *Cache) whoisCache(Entry *entry, serverName, host string, parent *x509.Certificate, priv *rsa.PrivateKey) (*tls.Certificate, []string, time.Time, error) {
+	cc, d, n := c.createLocalCert(Entry, serverName, host, parent, priv)
+	if cc != nil {
+		return cc, d, n, nil
+	}
+	return nil, nil, n, _GetIpCertError
 }
-func WhoisCache(Sunny *Sunny, cert *x509.Certificate, serverName, host string, parent *x509.Certificate, priv *rsa.PrivateKey) (*tls.Certificate, []string, error) {
-	{
-		if in := getTlsConfig(host); in != nil {
-			return in, nil, nil
-		}
-		if in := getTlsConfig(serverName); in != nil {
-			return in, nil, nil
-		}
-	}
-	{
-		c, d := getLocalCert(serverName)
-		if c != nil {
-			return c, d, nil
-		}
-		c, d = getLocalCert(host)
-		if c != nil {
-			return c, d, nil
-		}
-	}
-	{
-		c, d := createLocalCert(Sunny, cert, serverName, host, parent, priv)
-		if c != nil {
-			return c, d, nil
-		}
-	}
-	return nil, nil, _GetIpCertError
-}
-func WhoisLoopCache(Sunny *Sunny, cert *x509.Certificate, host string, parent *x509.Certificate, priv *rsa.PrivateKey) (*tls.Certificate, []string, error) {
-	c, d := getLocalCert(host)
-	if c != nil {
-		return c, d, nil
-	}
-	c, d = createLocalCert(Sunny, cert, host, host, parent, priv)
-	if c != nil {
-		return c, d, nil
-	}
-	return nil, nil, _GetIpCertError
-}
-func createLocalCert(Sunny *Sunny, cert *x509.Certificate, serverName, host string, parent *x509.Certificate, priv *rsa.PrivateKey) (*tls.Certificate, []string) {
-	var mHost string
-	var keyName string
-	var err error
-	if cert != nil {
-		not := time.Now().AddDate(0, 0, 365)
-		if serverName == "" || serverName == "null" {
-			mHost = host
-		} else {
+func (c *Cache) createLocalCert(e *entry, serverName, host string, parent *x509.Certificate, priv *rsa.PrivateKey) (*tls.Certificate, []string, time.Time) {
+	hasSNI := serverName != "" && serverName != "null"
+	if e != nil && e.netCert != nil {
+		mHost := host
+		if hasSNI {
 			mHost = serverName
 		}
-		certByte, priByte, er := generatePem(cert, mHost, parent, priv)
-		if er == nil {
-			certificate, er1 := tls.X509KeyPair(certByte, priByte)
-			if er1 == nil {
-				DNSNames := cert.DNSNames
-				for _, v := range cert.IPAddresses {
-					DNSNames = append(DNSNames, v.String())
+		certByte, priByte, err := generatePem(e.netCert, mHost, parent, priv)
+		if err == nil {
+			cert, err2 := tls.X509KeyPair(certByte, priByte)
+			if err2 == nil {
+				DNSNames := make([]string, 0, len(e.netCert.DNSNames)+len(e.netCert.IPAddresses))
+				DNSNames = append(DNSNames, e.netCert.DNSNames...)
+				for _, ip := range e.netCert.IPAddresses {
+					DNSNames = append(DNSNames, ip.String())
 				}
-				whoisLock.Lock()
-				whois[host] = &_cert{Cert: &certificate, Type: netCert, Expire: &not, DNSNames: DNSNames}
-				whoisLock.Unlock()
-				return &certificate, DNSNames
+				return &cert, DNSNames, e.netCert.NotAfter
 			}
 		}
 	}
-	if serverName == "" || serverName == "null" {
-		//是否为DNS解析服务器,如果是直接本地生成证书即可,就不需要从网络获取证书了
-		if !strings.HasSuffix(host, ":853") {
-			a, b, _ := createNetCert(Sunny, cert, host, parent, priv)
-			if a != nil {
-				return a, b
-			}
-			keyName = host
-			mHost, _, err = public.SplitHostPort(host)
-		} else {
-			keyName = host
-			mHost, _, err = public.SplitHostPort(host)
-		}
-	} else {
-		keyName = serverName
+
+	var (
+		mHost string
+		err   error
+	)
+
+	if hasSNI {
 		mHost, _, err = public.SplitHostPort(serverName)
+	} else {
+		if !strings.HasSuffix(host, ":853") {
+			cert, dns, not := c.tryCreateNetCert(e, host, parent, priv)
+			if cert != nil {
+				return cert, dns, not
+			}
+		}
+		mHost, _, err = public.SplitHostPort(host)
 	}
 	if err != nil {
-		return nil, nil
+		return nil, nil, time.Time{}
 	}
-	certByte, priByte, not, er := generatePemTemp(mHost, parent, priv)
-	if er != nil {
-		return nil, nil
+	certByte, priByte, dns, not, err := generatePemTemp(mHost, parent, priv)
+	if err != nil {
+		return nil, nil, time.Time{}
 	}
-	certificate, er := tls.X509KeyPair(certByte, priByte)
-	if er != nil {
-		return nil, nil
+	cert, err := tls.X509KeyPair(certByte, priByte)
+	if err != nil {
+		return nil, nil, time.Time{}
 	}
-	whoisLock.Lock()
-	whois[keyName] = &_cert{Cert: &certificate, Type: localCert, Expire: not}
-	whoisLock.Unlock()
-	return &certificate, nil
+	return &cert, dns, not
 }
-func createNetCert(Sunny *Sunny, cert *x509.Certificate, host string, parent *x509.Certificate, priv *rsa.PrivateKey) (*tls.Certificate, []string, error) {
+
+func (c *Cache) tryCreateNetCert(e *entry, host string, parent *x509.Certificate, priv *rsa.PrivateKey) (*tls.Certificate, []string, time.Time) {
+	cert, DNSNames, not, _ := c.createNetCert(e, host, parent, priv)
+	if cert == nil {
+		return nil, nil, time.Time{}
+	}
+	return cert, DNSNames, not
+}
+
+func (c *Cache) createNetCert(Entry *entry, host string, parent *x509.Certificate, priv *rsa.PrivateKey) (*tls.Certificate, []string, time.Time, error) {
 	mHost, _, err := public.SplitHostPort(host)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, time.Time{}, err
 	}
 	if ip := net.ParseIP(mHost); ip != nil {
 		var rr *x509.Certificate
-		if cert != nil {
-			rr = cert
+		if Entry.netCert != nil {
+			rr = Entry.netCert
 		}
 		if rr == nil {
 			for i := 0; i < 5; i++ {
-				rr, err = GetIpAddressHost(Sunny.proxy, host, Sunny.outRouterIP)
+				rr, err = c.getIpAddressHost(host)
 				if rr != nil {
 					break
 				}
 			}
 		}
 		if rr == nil {
-			return nil, nil, _GetIpCertError
+			return nil, nil, time.Time{}, _GetIpCertError
 		}
 		not := time.Now().AddDate(0, 0, 365)
 		certByte, priByte, er := generatePem(rr, mHost, parent, priv)
 		if er != nil {
-			return nil, nil, er
+			return nil, nil, not, er
 		}
 		certificate, er := tls.X509KeyPair(certByte, priByte)
 		if er != nil {
-			return nil, nil, er
+			return nil, nil, not, er
 		}
 		DNSNames := rr.DNSNames
 		for _, v := range rr.IPAddresses {
 			DNSNames = append(DNSNames, v.String())
 		}
-		whoisLock.Lock()
-		whois[host] = &_cert{Cert: &certificate, Type: netCert, Expire: &not, DNSNames: DNSNames}
-		whoisLock.Unlock()
-		return &certificate, DNSNames, nil
+		return &certificate, DNSNames, not, nil
 	}
-	return nil, nil, _ParseIPError
+	return nil, nil, time.Time{}, _ParseIPError
 }
-
-var _ParseIPError = errors.New("Not an IP address ")
-
-func getLocalCert(host string) (*tls.Certificate, []string) {
-	if host == "" || host == "null" {
-		return nil, nil
-	}
-	whoisLock.Lock()
-	defer whoisLock.Unlock()
-	//查询证书到期时间
-	val := whois[host]
-	if val != nil {
-		//查询到了
-		//和现在的的时间对比，如果证书即将到期则丢弃,重新获取证书
-		tenMinutesAgo := time.Now().Add(-10 * time.Minute)
-		if val.Expire.After(tenMinutesAgo) {
-			//如果证书没有即将到期 则获取该证书,如果没有获取到则重新获取证书
-			if val.Cert != nil {
-				//如果是临时证书，则向后台添加一个请求,当前先使用缓存中的临时证书
-				//如果不是临时证书，则直接返回该证书
-				if val.Type == localCert {
-					//TempNetAdd(Sunny, host)
-				}
-				return val.Cert, val.DNSNames
-			}
-		}
-		delete(whois, host)
-	}
-	return nil, nil
-}
-func getTlsConfig(host string) *tls.Certificate {
+func (c *Cache) getTlsConfig(host string) *tls.Certificate {
 	in := HttpCertificate.GetTlsConfig(host, public.CertificateRequestManagerRulesReceive)
 	if in != nil {
 		if len(in.Certificates) > 0 {
@@ -400,7 +530,7 @@ func getTlsConfig(host string) *tls.Certificate {
 	}
 	return nil
 }
-func GetIpAddressHost(proxy *SunnyProxy.Proxy, ipAddress string, outRouterIP *net.TCPAddr) (*x509.Certificate, error) {
+func (c *Cache) getIpAddressHost(ipAddress string) (*x509.Certificate, error) {
 	config := &tls.Config{InsecureSkipVerify: true}
 	var x *x509.Certificate
 	config.VerifyServerCertificate = func(certificate *x509.Certificate) error {
@@ -414,7 +544,7 @@ func GetIpAddressHost(proxy *SunnyProxy.Proxy, ipAddress string, outRouterIP *ne
 			_ = conn.Close()
 		}
 	}()
-	conn, err = proxy.Dial("tcp", ipAddress, outRouterIP)
+	conn, err = c.sunny.proxy.Dial("tcp", ipAddress, c.sunny.outRouterIP)
 	if err != nil {
 		return nil, err
 	}
@@ -425,8 +555,6 @@ func GetIpAddressHost(proxy *SunnyProxy.Proxy, ipAddress string, outRouterIP *ne
 	}
 	return x, err
 }
-
-var _GetIpCertError = fmt.Errorf("no success Get Certificate")
 
 func generatePem(template *x509.Certificate, host string, parent *x509.Certificate, priv *rsa.PrivateKey) ([]byte, []byte, error) {
 	mHost, _, err := net.SplitHostPort(host)
@@ -474,7 +602,7 @@ func generatePem(template *x509.Certificate, host string, parent *x509.Certifica
 			Bytes: x509.MarshalPKCS1PrivateKey(priv),
 		}), err
 }
-func generatePemTemp(mHost string, parent *x509.Certificate, priv *rsa.PrivateKey) ([]byte, []byte, *time.Time, error) {
+func generatePemTemp(mHost string, parent *x509.Certificate, priv *rsa.PrivateKey) ([]byte, []byte, []string, time.Time, error) {
 	serialNumber, _ := rand.Int(rand.Reader, public.MaxBig)
 	not := time.Now().AddDate(0, 0, 365)
 	template := x509.Certificate{
@@ -499,9 +627,11 @@ func generatePemTemp(mHost string, parent *x509.Certificate, priv *rsa.PrivateKe
 			template.DNSNames = []string{mHost}
 		}
 	}
+
+	DNSNames := template.DNSNames
 	cer, err := x509.CreateCertificate(rand.Reader, &template, parent, &priv.PublicKey, priv)
 	if err != nil {
-		return nil, nil, &not, err
+		return nil, nil, nil, not, err
 	}
 	return pem.EncodeToMemory(&pem.Block{ // 证书
 			Type:  "CERTIFICATE",
@@ -509,73 +639,14 @@ func generatePemTemp(mHost string, parent *x509.Certificate, priv *rsa.PrivateKe
 		}), pem.EncodeToMemory(&pem.Block{ // 私钥
 			Type:  "RSA PRIVATE KEY",
 			Bytes: x509.MarshalPKCS1PrivateKey(priv),
-		}), &not, err
+		}), DNSNames, not, err
 }
 
-var tempNet map[*Sunny]map[string]byte
-var tempNetLock sync.Mutex
+var _GetIpCertError = fmt.Errorf("no success Get Certificate")
 
-func init() {
-	tempNet = make(map[*Sunny]map[string]byte)
-	host := ""
-	var obj *Sunny
-	var rootCa *x509.Certificate //中间件CA证书
-	var rootKey *rsa.PrivateKey  // 证书私钥
-	var certificate tls.Certificate
-	var certByte []byte
-	var priByte []byte
-	var not *time.Time
-	var err error
-	var rr *x509.Certificate
-	go func() {
-		for {
-			tempNetLock.Lock()
-			host = ""
-			for k, v := range tempNet {
-				for kk, vv := range v {
-					if vv == 1 {
-						host = kk
-						obj = k
-						break
-					}
-				}
-			}
-			if host == "" {
-				tempNetLock.Unlock()
-				time.Sleep(time.Second)
-				continue
-			}
-			rootCa = obj.rootCa
-			rootKey = obj.rootKey
-			tempNetLock.Unlock()
-			rr, err = GetIpAddressHost(obj.proxy, host, obj.outRouterIP)
-			not1 := time.Now().AddDate(0, 0, 365)
-			not = &not1
-			if rr == nil {
-				goto gg
-			}
-			certByte, priByte, err = generatePem(rr, host, rootCa, rootKey)
-			if err != nil {
-				goto gg
-			}
-			certificate, err = tls.X509KeyPair(certByte, priByte)
-			if err != nil {
-				goto gg
-			}
-			{
-				DNSNames := rr.DNSNames
-				for _, v := range rr.IPAddresses {
-					DNSNames = append(DNSNames, v.String())
-				}
-				whoisLock.Lock()
-				whois[host] = &_cert{Cert: &certificate, Type: netCert, Expire: not, DNSNames: DNSNames}
-				whoisLock.Unlock()
-			}
-		gg:
-			tempNetLock.Lock()
-			delete(tempNet[obj], host)
-			tempNetLock.Unlock()
+var _ParseIPError = errors.New("Not an IP address ")
 
-		}
-	}()
-}
+const whoisUndefined = 0
+const whoisNoHTTPS = 1
+const whoisHTTPS1 = 2
+const whoisHTTPS2 = 3

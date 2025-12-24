@@ -15,6 +15,7 @@ import (
 	"github.com/qtgolang/SunnyNet/src/crypto/tls"
 	"github.com/qtgolang/SunnyNet/src/http"
 	"github.com/qtgolang/SunnyNet/src/httpClient"
+	"github.com/qtgolang/SunnyNet/src/loop"
 	"github.com/qtgolang/SunnyNet/src/public"
 )
 
@@ -226,8 +227,28 @@ func HTTPSendBin(Context int, data []byte) {
 		random = public.GetTLSValues
 	}
 	k.respBody = nil
-	r := httpClient.Do(k.req, k.proxy, k.redirect, k.tlsConfig, time.Duration(k.outTime)*time.Millisecond, random, nil)
-	//resp, _, _, f
+
+	_connection := func(conn net.Conn) {
+		l, _ := extractPorts(conn)
+		loop.AddLoopFilter(l)
+	}
+	_close := func(conn net.Conn) {
+		l, _ := extractPorts(conn)
+		loop.UnLoopFilter(l)
+	}
+	op := httpClient.Options{
+		RequestProxy:  k.proxy,
+		CheckRedirect: k.redirect,
+		TLSConfig:     k.tlsConfig,
+		OutTime:       time.Duration(k.outTime) * time.Millisecond,
+		GetTLSValues:  random,
+		MConn:         nil,
+		Event: httpClient.Event{
+			Connection: _connection,
+			Close:      _close,
+		},
+	}
+	r := httpClient.DoOptions(k.req, op)
 	defer func() {
 		if r.Close != nil && r.Response != nil {
 			r.Close()
@@ -245,6 +266,18 @@ func HTTPSendBin(Context int, data []byte) {
 			k.respBody = i
 		}
 	}
+}
+
+func extractPorts(conn net.Conn) (local uint16, remote uint16) {
+	if conn == nil { //连接为空直接报错
+		return 0, 0
+	}
+	tcpLocal, ok1 := conn.LocalAddr().(*net.TCPAddr)   //本地TCP地址
+	tcpRemote, ok2 := conn.RemoteAddr().(*net.TCPAddr) //对端TCP地址
+	if !ok1 || !ok2 {                                  //非TCP连接
+		return 0, 0
+	}
+	return uint16(tcpLocal.Port), uint16(tcpRemote.Port)
 }
 
 // HTTPGetBodyLen

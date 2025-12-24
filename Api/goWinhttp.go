@@ -226,11 +226,11 @@ func HTTPSendBin(Context int, data []byte) {
 		random = public.GetTLSValues
 	}
 	k.respBody = nil
-	resp, _, _, f := httpClient.Do(k.req, k.proxy, k.redirect, k.tlsConfig, time.Duration(k.outTime)*time.Millisecond, random, nil)
-
+	r := httpClient.Do(k.req, k.proxy, k.redirect, k.tlsConfig, time.Duration(k.outTime)*time.Millisecond, random, nil)
+	//resp, _, _, f
 	defer func() {
-		if f != nil && resp != nil {
-			f()
+		if r.Close != nil && r.Response != nil {
+			r.Close()
 		}
 	}()
 	if k.resp != nil {
@@ -238,7 +238,7 @@ func HTTPSendBin(Context int, data []byte) {
 			_ = k.resp.Body.Close()
 		}
 	}
-	k.resp = resp
+	k.resp = r.Response
 	if k.resp != nil {
 		if k.resp.Body != nil {
 			i, _ := io.ReadAll(k.resp.Body)

@@ -17,7 +17,7 @@ import (
 	"github.com/qtgolang/SunnyNet/src/websocket"
 )
 
-const SunnyVersion = "2025-12-23"
+const SunnyVersion = "2025-12-25"
 const Information = `
 ------------------------------------------------------
        欢迎使用 SunnyNet 网络中间件 - V` + SunnyVersion + `   

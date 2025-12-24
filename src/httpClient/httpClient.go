@@ -3,16 +3,13 @@ package httpClient
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
-	"strings"
 	"sync"
 	"time"
 	"unsafe"
 
 	"github.com/qtgolang/SunnyNet/src/SunnyProxy"
 	tls "github.com/qtgolang/SunnyNet/src/crypto/tls"
-	"github.com/qtgolang/SunnyNet/src/dns"
 	"github.com/qtgolang/SunnyNet/src/http"
 	"github.com/qtgolang/SunnyNet/src/loop"
 	"github.com/qtgolang/SunnyNet/src/public"
@@ -36,178 +33,97 @@ func init() {
 		}
 	}()
 }
-func Do(req *http.Request, RequestProxy *SunnyProxy.Proxy, CheckRedirect bool, config *tls.Config, outTime time.Duration, GetTLSValues func() []uint16, MConn net.Conn) (Response *http.Response, Conn net.Conn, err error, Close func()) {
-	if req.ProtoMajor == 2 {
-		switch req.Method {
-		case public.HttpMethodHEAD, public.HttpMethodGET, public.HttpMethodTRACE, public.HttpMethodOPTIONS:
-			if req.Body != nil {
-				_ = req.Body.Close()
-				req.Body = nil
-			}
-		}
-	}
-	{
-		if req != nil && req.Header != nil {
-			Cookies := req.Header.GetArray("Cookie")
-			if len(Cookies) > 1 {
-				req.Header.Set("Cookie", strings.Join(Cookies, "; "))
-			}
-		}
-	}
-	cfg := config.Clone()
-	if req.URL != nil && req.URL.Scheme != "http" {
-		if cfg == nil {
-			cfg = &tls.Config{}
-		}
-		cfg.InsecureSkipVerify = true
-	}
-	_hashCode := public.SumHashCode(req.Host)
-	_mustHTTP11_lock.Lock()
-	if _mustHTTP11[_hashCode] != nil {
-		cfg.NextProtos = public.HTTP1NextProtos
-		x := time.Now()
-		_mustHTTP11[_hashCode] = &x
-	}
-	_mustHTTP11_lock.Unlock()
-	handshakeCount := 0
-	for {
-		if cfg != nil && GetTLSValues != nil {
-			tv := GetTLSValues()
-			if len(tv) > 0 {
-				cfg.CipherSuites = tv
-			}
-		}
-		Response, Conn, err, Close = do(req, RequestProxy, CheckRedirect, cfg, outTime, MConn)
-		if err != nil {
-			if Conn != nil {
-				_ = Conn.Close()
+
+func Do(req *http.Request, RequestProxy *SunnyProxy.Proxy, CheckRedirect bool, config *tls.Config, outTime time.Duration, GetTLSValues func() []uint16, MConn net.Conn) Result {
+	return DoOptions(req, Options{
+		RequestProxy:  RequestProxy,
+		CheckRedirect: CheckRedirect,
+		TLSConfig:     config,
+		OutTime:       outTime,
+		GetTLSValues:  GetTLSValues,
+		MConn:         MConn,
+	})
+}
+
+// DoOptions 优化参数/返回值与拆分函数
+func DoOptions(req *http.Request, opt Options) (r Result) {
+	normalizeHTTP2Body(req)    // HTTP/2 下清理不允许携带 Body 的方法
+	normalizeCookieHeader(req) // 合并多个 Cookie 头为一个
+
+	cfg := buildTLSConfig(req, Options(opt))    // 克隆并构建 TLS 配置
+	_hashCode := applyMustHTTP11(req.Host, cfg) // 根据 host 命中缓存时强制 HTTP/1.1
+
+	handshakeCount := 0 // 握手/连接类错误计数
+	for {               // 重试循环开始
+		applyTLSValues(cfg, opt) // 动态设置 CipherSuites
+
+		dr := do(doArgs{ // 调用底层 do 执行一次请求
+			req:           req,               // 请求对象
+			RequestProxy:  opt.RequestProxy,  // 代理配置
+			CheckRedirect: opt.CheckRedirect, // 是否允许重定向
+			config:        cfg,               // TLS 配置
+			outTime:       opt.OutTime,       // 超时时间
+			MConn:         opt.MConn,         // 客户端连接
+			Event:         opt.Event,
+		})
+		r.Response, r.Conn, r.Err, r.Close = dr.resp, dr.conn, dr.err, dr.closeFn // 拆包结果
+
+		if r.Err != nil { // 如果请求出错
+			closeConnOnErr(r.Conn) // 出错时关闭底层连接
+
+			if needDowngradeHTTP11(r.Err, cfg, _hashCode) { // HTTP2 stream error 降级 HTTP/1.1
+				continue // 继续下一次重试
 			}
 
-			ers := err.Error()
-
-			if strings.Contains(ers, "stream error: stream ID") && len(cfg.NextProtos) == 2 {
-				cfg.NextProtos = public.HTTP1NextProtos
-				_mustHTTP11_lock.Lock()
-				x := time.Now()
-				_mustHTTP11[_hashCode] = &x
-				_mustHTTP11_lock.Unlock()
-				continue
+			shouldRetry, shouldReturn := handleRetryableHandshakeError(req, r.Err, &handshakeCount) // 处理握手/连接/EOF 错误
+			if shouldReturn {                                                                       // 达到最大重试次数
+				r.Close = nil // 禁用 Close 回调
+				return        // 直接返回
 			}
-
-			//Get "https://www.zjwubei.com:520/": stream error: stream ID 1; CANCEL; received from peer
-
-			if strings.Contains(ers, "handshake") || strings.Contains(ers, "connection") || strings.Contains(ers, "EOF") {
-				handshakeCount++
-				if handshakeCount > 10 {
-					Close = nil
-					return
-				}
-				if strings.Contains(ers, "EOF") && handshakeCount > 3 {
-					if req.IsSetHTTP2Config() {
-						req.SetHTTP2Config(nil)
-					}
-				}
-				continue
+			if shouldRetry { // 仍可重试
+				continue // 进入下一轮
 			}
 		}
-		return
+		return // 成功或不可重试错误直接返回
 	}
 }
-func do(req *http.Request, RequestProxy *SunnyProxy.Proxy, CheckRedirect bool, config *tls.Config, outTime time.Duration, MConn net.Conn) (*http.Response, net.Conn, error, func()) {
-	if req != nil {
-		if req.Header != nil {
-			//请求时，删除协议头中的长度，请求时会自动添加
-			ContentLengthName := ""
-			var ContentLengthValue []string
-			sName := "Content-Length"
-			for k, v := range req.Header {
-				if strings.EqualFold(k, sName) {
-					ContentLengthName = k //保留原本的大小写名称
-					ContentLengthValue = v
-					break
-				}
-			}
-			if ContentLengthName != "" {
-				req.Header.Del(sName)
-				defer func() {
-					req.Header.Del(sName)
-					req.Header.SetArray(sName, ContentLengthValue)
-				}()
-			}
-		}
+
+func do(a doArgs) (r doResult) {
+	req := a.req                     // 请求对象
+	RequestProxy := a.RequestProxy   // 代理配置
+	CheckRedirect := a.CheckRedirect // 是否允许重定向
+	config := a.config               // TLS 配置
+	outTime := a.outTime             // 超时时间
+	MConn := a.MConn                 // 客户端连接
+
+	if restore := stripContentLengthHeader(req); restore != nil { // 移除 Content-Length 头
+		defer restore() // 函数返回前恢复 Content-Length
 	}
-	SendTimeout := 30 * 1000 * time.Millisecond
-	outTime = SendTimeout
-	client := httpClientGet(req, RequestProxy, config, outTime)
-	if CheckRedirect {
-		client.Client.CheckRedirect = public.HTTPAllowRedirect
-	} else {
-		client.Client.CheckRedirect = public.HTTPBanRedirect
+	if outTime < 100*time.Millisecond { // 超时时间过小
+		outTime = 30 * time.Second // 使用默认 30 秒
 	}
-	if MConn != nil {
-		//防止客户端与 SunnyNet 断开连接，但是 SunnyNet 与 目标服务器 一直交互
-		ticker := time.NewTicker(3 * time.Second)
-		stop := make(chan struct{}) // 退出信号
-		var mu sync.WaitGroup
-		mu.Add(1) // 提前加 1，确保 Done() 被执行
-		Cancel := req.WithCancel()
-		go func() {
-			defer mu.Done()
-			ms := make([]byte, 1)
-			for {
-				select {
-				case <-ticker.C:
-					_ = MConn.SetReadDeadline(time.Now().Add(1 * time.Millisecond))
-					_, er := MConn.Read(ms)
-					if er != nil {
-						if strings.Contains(er.Error(), "close") {
-							if client.Conn != nil {
-								Conn := client.Conn
-								_ = Conn.Close()
-							} else {
-								Cancel()
-							}
-						}
-					}
-				case <-stop: // 监听退出信号
-					return
-				}
-			}
-		}()
-		defer func() {
-			ticker.Stop()
-			close(stop)
-			mu.Wait()
-			_ = MConn.SetDeadline(time.Time{})
-		}()
+
+	client := httpClientGet(req, RequestProxy, config, outTime, a.Event) // 获取 HTTP 客户端
+	applyRedirectPolicy(client, CheckRedirect)                           // 设置重定向策略
+
+	cleanup := watchClientConn(req, client, MConn) // 启动客户端连接监控
+	defer cleanup()                                // 函数返回时停止监控并清理
+
+	stripTEForHTTP2(client, req) // HTTP/2 场景下删除 TE 头
+
+	r.resp, r.err = client.Client.Do(req)   // 发起 HTTP 请求
+	if errors.Is(r.err, context.Canceled) { // 判断是否为取消错误
+		r.err = httpCancel // 转换为内部取消错误
 	}
-	if client.h2 && req != nil {
-		//部分HTTP2服务器不支持此协议头,导致出现协议错误
-		req.Header.Del("TE")
+
+	if client.Conn != nil { // 如果底层连接存在
+		r.conn = client.Conn // 返回该连接
 	}
-	reqs, err := client.Client.Do(req)
-	if errors.Is(err, context.Canceled) {
-		err = httpCancel
-	}
-	var rConn net.Conn
-	if client.Conn != nil {
-		rConn = client.Conn
-	}
-	address, proxy, _ := net.SplitHostPort(client.RequestProxy.DialAddr)
-	if req != nil {
-		ip := net.ParseIP(address)
-		if ip == nil {
-			req.SetContext(public.SunnyNetServerIpTags, client.RequestProxy.DialAddr)
-		} else {
-			req.SetContext(public.SunnyNetServerIpTags, SunnyProxy.FormatIP(ip, proxy))
-		}
-	}
-	return reqs, rConn, err, func() {
-		if err != nil {
-			return
-		}
-		httpClientPop(client)
-	}
+
+	setServerIPTag(req, client.RequestProxy.DialAddr) // 写入服务端 IP 信息到 context
+
+	r.closeFn = buildCloseFn(client, r.err) // 构建 Close 回调函数
+	return                                  // 返回 doResult
 }
 
 var httpCancel = errors.New("客户端取消请求")
@@ -216,237 +132,38 @@ var httpClientMap map[uint32]clientList
 
 type clientList map[uintptr]*clientPart
 
-func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, timeout time.Duration) *clientPart {
+func httpClientGet(req *http.Request, Proxy *SunnyProxy.Proxy, cfg *tls.Config, timeout time.Duration, event Event) *clientPart {
 	httpLock.Lock()
 	defer httpLock.Unlock()
-	outRouterIP, _ := req.Context().Value(public.OutRouterIPKey).(*net.TCPAddr)
-	s := dns.GetDnsServer()
-	if outRouterIP != nil {
-		s += outRouterIP.String() + "|"
-	} else {
-		s += "|"
+
+	outRouterIP := getOutRouterIP(req)                         //从上下文取出出口路由IP
+	keyStr := buildHTTPClientKey(req, Proxy, cfg, outRouterIP) //构建客户端缓存key字符串
+	hash := public.SumHashCode(keyStr)                         //计算hash
+
+	if c := tryPopCachedClient(hash, Proxy, timeout); c != nil { //尝试从缓存取出可复用客户端
+		return c
 	}
-	if req != nil && req.URL != nil {
-		s += req.URL.Host + "|" + req.Proto + "|" + req.URL.Scheme
-	}
-	s += "|" + Proxy.String() + "|"
-	if cfg != nil {
-		if len(cfg.NextProtos) < 1 {
-			cfg.NextProtos = []string{http.H11Proto, http.H2Proto}
-		}
-		s += strings.Join(cfg.NextProtos, "-")
-	}
-	hash := public.SumHashCode(s)
-	if clients, ok := httpClientMap[hash]; ok {
-		if len(clients) > 0 {
-			for key, client := range clients {
-				delete(clients, key)
-				var nproxy *SunnyProxy.Proxy
-				if Proxy != nil {
-					nproxy = Proxy.Clone()
-				} else {
-					nproxy = new(SunnyProxy.Proxy)
-				}
-				if client.RequestProxy != nil {
-					nproxy.DialAddr = client.RequestProxy.DialAddr
-				}
-				client.RequestProxy = nproxy
-				if client.Conn != nil {
-					Conn := client.Conn
-					if timeout == 0 {
-						_ = Conn.SetDeadline(time.Time{})
-						_ = Conn.SetWriteDeadline(time.Time{})
-						_ = Conn.SetDeadline(time.Time{})
-					} else {
-						_ = Conn.SetDeadline(time.Now().Add(timeout))
-						_ = Conn.SetWriteDeadline(time.Now().Add(timeout))
-						_ = Conn.SetDeadline(time.Now().Add(timeout))
-					}
-					client.Client.Timeout = 24 * time.Hour
-					client.Transport.ResponseHeaderTimeout = 24 * time.Hour // 读取响应头超时
-					client.Transport.IdleConnTimeout = 24 * time.Hour       // 空闲连接超时
-					client.Transport.TLSHandshakeTimeout = 24 * time.Hour   // TLS 握手超时
-				}
-				return client
-			}
-		}
-	}
-	if cfg != nil {
-		if len(cfg.NextProtos) > 0 {
-			cfg.GetConfigForServer = func(info *tls.ServerHelloMsg) error {
-				for _, proto := range cfg.NextProtos {
-					if proto == http.H2Proto && info.SupportedVersion == 772 {
-						return nil // 如果支持，则返回 nil
-					}
-					if proto == http.H11Proto && (info.SupportedVersion == 0 || info.Vers == 771) {
-						return nil // 如果支持，则返回 nil
-					}
-				}
-				ver := info.SupportedVersion
-				if ver == 0 {
-					ver = info.Vers
-				}
-				Proto, _ := http.ProtoVersions[info.Vers]
-				if Proto == "" {
-					return fmt.Errorf("服务器不支持您所选HTTP协议版本")
-				}
-				return fmt.Errorf("服务器不支持您所选HTTP协议版本: 需要协议[%s],请检查您的配置", strings.ToUpper(Proto))
-			}
-		}
-	}
-	Tr := &http.Transport{TLSClientConfig: cfg}
-	if timeout == 0 {
-		Tr.ResponseHeaderTimeout = 60 * time.Second // 读取响应头超时
-		Tr.IdleConnTimeout = 60 * time.Second       // 空闲连接超时
-		Tr.TLSHandshakeTimeout = 60 * time.Second   // TLS 握手超时
-	} else {
-		Tr.ResponseHeaderTimeout = timeout // 读取响应头超时
-		Tr.IdleConnTimeout = timeout       // 空闲连接超时
-		Tr.TLSHandshakeTimeout = timeout   // TLS 握手超时
-	}
-	h2 := false
-	if cfg != nil {
-		if len(cfg.NextProtos) < 1 {
-			configureHTTP2Transport(Tr, cfg)
-			h2 = true
-		} else {
-			for _, proto := range cfg.NextProtos {
-				if proto == http.H2Proto {
-					configureHTTP2Transport(Tr, cfg)
-					h2 = true
-					break
-				}
-			}
-		}
-	}
-	var ips []net.IP
-	var isLookupIP bool
-	var ProxyHost string
-	var LookupIPdial func(network string, addr string, OutRouterIP *net.TCPAddr) (net.Conn, error)
-	var nproxy *SunnyProxy.Proxy
-	var LookupIPproxy *SunnyProxy.Proxy
-	if Proxy != nil {
-		nproxy = Proxy.Clone()
-		LookupIPproxy = Proxy.Clone()
-		LookupIPdial = LookupIPproxy.Dial
-		ProxyHost = Proxy.Host
-	} else {
-		nproxy = new(SunnyProxy.Proxy)
-		LookupIPdial = LookupIPproxy.Dial
-	}
-	cc := http.Client{Transport: Tr, Timeout: timeout}
-	res := &clientPart{Client: cc, key: hash, RequestProxy: nproxy, Transport: Tr, h2: h2}
-	if outRouterIP != nil {
-		res.outRouterIP = &net.TCPAddr{IP: outRouterIP.IP}
-	}
-	Tr.DialContext = func(ctx context.Context, network, addr string) (cnn net.Conn, _ error) {
-		defer func() {
-			if cnn != nil {
-				res.Conn = cnn
-				loop.Add(cnn)
-				if timeout != 0 {
-					_ = cnn.SetDeadline(time.Now().Add(timeout))
-					_ = cnn.SetWriteDeadline(time.Now().Add(timeout))
-					_ = cnn.SetDeadline(time.Now().Add(timeout))
-				} else {
-					_ = cnn.SetDeadline(time.Time{})
-					_ = cnn.SetWriteDeadline(time.Time{})
-					_ = cnn.SetDeadline(time.Time{})
-				}
-				Tr.ResponseHeaderTimeout = 24 * time.Hour // 读取响应头超时
-				Tr.IdleConnTimeout = 24 * time.Hour       // 空闲连接超时
-				Tr.TLSHandshakeTimeout = 24 * time.Hour   // TLS 握手超时
-				cc.Timeout = 24 * time.Hour
-			}
-		}()
-		serveripFunc, ok := req.Context().Value(public.Connect_Raw_Address).(func() string)
-		if ok && serveripFunc != nil {
-			_serverIP_ := serveripFunc()
-			if _serverIP_ != "" {
-				address2, _, err2 := net.SplitHostPort(_serverIP_)
-				if err2 == nil {
-					ip := net.ParseIP(address2)
-					if ip != nil {
-						conn, er := res.RequestProxy.DialWithTimeout(network, _serverIP_, 3*time.Second, res.outRouterIP)
-						if conn != nil {
-							return conn, er
-						}
-					}
-				}
-			}
-		}
-		if dns.IsRemoteDnsServer() {
-			conn, er := res.RequestProxy.DialWithTimeout(network, addr, 3*time.Second, res.outRouterIP)
-			return conn, er
-		}
-		address, port, err := net.SplitHostPort(addr)
-		if err != nil {
-			return nil, err
-		}
-		i := net.ParseIP(address)
-		if i != nil {
-			if len(i) == net.IPv4len {
-				return res.RequestProxy.Dial(network, i.String()+":"+port, res.outRouterIP)
-			}
-			return res.RequestProxy.Dial(network, fmt.Sprintf("[%s]:%s", address, port), res.outRouterIP)
-		}
-		if strings.ToLower(address) == "localhost" {
-			return res.RequestProxy.Dial(network, "127.0.0.1:"+port, res.outRouterIP)
-		}
-		var retries bool
-		for {
-			if !isLookupIP {
-				isLookupIP = true
-				first := dns.GetFirstIP(address, ProxyHost)
-				if first != nil {
-					if first.To4() != nil {
-						return res.RequestProxy.Dial(network, fmt.Sprintf("%s:%s", first.String(), port), res.outRouterIP)
-					} else {
-						return res.RequestProxy.Dial(network, fmt.Sprintf("[%s]:%s", first.String(), port), res.outRouterIP)
-					}
-				}
-				ips, _ = dns.LookupIP(address, ProxyHost, res.outRouterIP, LookupIPdial)
-				if len(ips) < 1 {
-					return nil, noIP
-				}
-			}
-			if len(ips) < 1 {
-				dns.SetFirstIP(address, ProxyHost, nil)
-				if retries {
-					return nil, connectionFailed
-				}
-				isLookupIP = false
-				retries = true
-				continue
-			}
-			var AllLocalIP = true
-			for _, ip := range ips {
-				if ip.String() != "127.0.0.1" {
-					AllLocalIP = false
-					break
-				}
-			}
-			if AllLocalIP && len(ips) != 0 {
-				return nil, errors.New(fmt.Sprintf("Address [%s] points to 127.0.0.1", address))
-			}
-			ip := extractAndRemoveIP(&ips)
-			if ip != nil && ip.String() != "127.0.0.1" {
-				if ip.To4() != nil {
-					conn, er := res.RequestProxy.DialWithTimeout(network, fmt.Sprintf("%s:%s", ip.String(), port), 2*time.Second, res.outRouterIP)
-					if conn != nil {
-						dns.SetFirstIP(address, ProxyHost, ip)
-						return conn, er
-					}
-					continue
-				}
-				conn, er := res.RequestProxy.DialWithTimeout(network, fmt.Sprintf("[%s]:%s", ip.String(), port), 2*time.Second, res.outRouterIP)
-				if conn != nil {
-					dns.SetFirstIP(address, ProxyHost, ip)
-					return conn, er
-				}
-			}
-		}
-	}
+
+	applyTLSProtoCheck(cfg) //设置TLS协议版本校验逻辑
+
+	Tr := newTransport(cfg, timeout)                                   //创建Transport并设置超时
+	h2 := configureH2IfNeeded(Tr, cfg)                                 //按NextProtos配置HTTP2
+	nproxy, lookupProxy, lookupDial, proxyHost := buildProxySet(Proxy) //构建代理对象与LookupIP拨号器
+
+	cc := http.Client{Transport: Tr, Timeout: timeout}          //创建HTTP客户端
+	res := newClientPart(cc, Tr, hash, nproxy, h2, outRouterIP) //创建clientPart
+
+	bindDialContext(dialCtxArgs{
+		Tr:         Tr,
+		Req:        req,
+		Res:        res,
+		Timeout:    timeout,
+		Event:      event,
+		ProxyHost:  proxyHost,
+		LookupDial: lookupDial,
+	})
+	_ = lookupProxy //保持原有变量结构，不改变逻辑意图
+
 	return res
 }
 
@@ -484,7 +201,7 @@ func configureHTTP2Transport(Tr *http.Transport, cfg *tls.Config) {
 
 	// 如果找到了 HTTP/2.0 协议，则配置 HTTP/2.0 传输
 	if protoFound || len(cfg.NextProtos) == 0 {
-		http.HTTP2configureTransport(Tr)
+		_, _ = http.HTTP2configureTransport(Tr)
 	}
 }
 

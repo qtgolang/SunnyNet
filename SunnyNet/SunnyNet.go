@@ -1040,17 +1040,13 @@ func (s *proxyRequest) doRequest() error {
 	if s.Request.URL == nil {
 		return errors.New("request.url is nil")
 	}
-	var do *http.Response
-	var n net.Conn
-	var err error
-	var Close func()
-	do, n, err, Close = httpClient.Do(s.Request, s.Proxy, false, s.TlsConfig, s.SendTimeout, s.getTLSValues, s.Conn)
-	if err == nil && do != nil {
+	r := httpClient.Do(s.Request, s.Proxy, false, s.TlsConfig, s.SendTimeout, s.getTLSValues, s.Conn)
+	if r.Err == nil && r.Response != nil {
 		if s.rawTarget != 0 {
 			if s.Request.URL.Scheme != "https" {
 				s.Global.cache.updateType(s.rawTarget, whoisNoHTTPS)
 			} else {
-				if do.ProtoMajor == 2 {
+				if r.Response.ProtoMajor == 2 {
 					s.Global.cache.updateType(s.rawTarget, whoisHTTPS2)
 				} else {
 					s.Global.cache.updateType(s.rawTarget, whoisHTTPS1)
@@ -1058,16 +1054,16 @@ func (s *proxyRequest) doRequest() error {
 			}
 		}
 	}
-	s.Response.Conn = n
+	s.Response.Conn = r.Conn
 	ip, _ := s.Request.Context().Value(public.SunnyNetServerIpTags).(string)
 	if ip != "" {
 		s.Response.ServerIP = ip
 	} else {
 		s.Response.ServerIP = "unknown"
 	}
-	s.Response.Response = do
-	s.Response.Close = Close
-	return err
+	s.Response.Response = r.Response
+	s.Response.Close = r.Close
+	return r.Err
 }
 func (s *proxyRequest) sendHttps(req *http.Request) {
 	s.Target.Parse(req.Host, public.HttpsDefaultPort)
@@ -1094,8 +1090,11 @@ func (s *proxyRequest) https() {
 	}
 	//是否开启了强制走TCP  And 如果是DNS请求则不用判断了，直接强制走TCP
 	if (s.Global.isMustTcp || s.Target.Port == 853) && !s.targetIsInterfaceAdders() {
-		if s.Global.disableTCP {
-			return
+
+		if !loop.IsFilterConn(s.Conn) {
+			if s.Global.disableTCP {
+				return
+			}
 		}
 		s.NoRepairHttp = true
 		//开启了强制走TCP，则按TCP流程处理
@@ -2570,8 +2569,10 @@ func (s *Sunny) handleClientConn(conn net.Conn) {
 			}
 		}
 		if s.isMustTcp && !req.targetIsInterfaceAdders() {
-			if s.disableTCP {
-				return
+			if !loop.IsFilterConn(req.Conn) {
+				if s.disableTCP {
+					return
+				}
 			}
 			//如果开启了强制走TCP ，则按TCP处理流程处理
 			req.MustTcpProcessing(public.TagMustTCP)

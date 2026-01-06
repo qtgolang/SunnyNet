@@ -34,7 +34,7 @@ func (d *Divert) IsRunning() bool {
 func (d *Divert) Close() {
 	d.handleMutex.Lock()
 	if d.handle != nil {
-		_ = d.handle2.Close()
+		_ = d.handle.Close()
 	}
 	if d.handle2 != nil {
 		_ = d.handle2.Close()

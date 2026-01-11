@@ -160,6 +160,49 @@ func CancelAll() bool {
 	return true
 }
 
+func AddBlackName(u string) bool {
+	Lock.Lock()
+	BlackName[strings.ToLower(u)] = true
+	Lock.Unlock()
+	CloseNameTCP(u)
+	return true
+}
+func DelBlackName(u string) bool {
+	Lock.Lock()
+	delete(BlackName, strings.ToLower(u))
+	Lock.Unlock()
+	CloseNameTCP(u)
+	return true
+}
+func AddBlackPid(u uint32) bool {
+	Lock.Lock()
+	BlackPid[u] = true
+	Lock.Unlock()
+	ClosePidTCP(int(u))
+	return true
+}
+func DelBlackPid(u uint32) bool {
+	Lock.Lock()
+	delete(BlackPid, u)
+	Lock.Unlock()
+	ClosePidTCP(int(u))
+	return true
+}
+func CancelBlackAll() bool {
+	Lock.Lock()
+	for u := range BlackName {
+		CloseNameTCP(u)
+		delete(BlackName, u)
+	}
+	for u := range BlackPid {
+		ClosePidTCP(int(u))
+		delete(BlackPid, u)
+	}
+	Lock.Unlock()
+	return true
+}
+
+
 func AddDevObj(connPort uint16, info DrvInfo) {
 	Lock.Lock()
 	Proxy[connPort] = info
@@ -175,6 +218,15 @@ func DelDevObj(connPort uint16) {
 func CheckPidByName(pid int32, name string) bool {
 	Lock.Lock()
 	defer Lock.Unlock()
+	if BlackName[strings.ToLower(name)] == false {
+		if BlackPid[uint32(pid)] == false {
+			return false
+		}else{
+			return true
+		}
+	}else{
+		return true
+	}
 	if HookProcess {
 		return false
 	}

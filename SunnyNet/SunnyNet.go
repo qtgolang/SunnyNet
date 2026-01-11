@@ -2296,6 +2296,41 @@ func (s *Sunny) ProcessCancelAll() *Sunny {
 	return s
 }
 
+// ProcessDelBlackName 删除黑名单进程名  所有 SunnyNet 通用
+func (s *Sunny) ProcessDelBlackName(name string) *Sunny {
+	ProcessCheck.DelBlackName(name)
+	//CrossCompiled.NFapi_CloseNameTCP(name)
+	return s
+}
+
+// ProcessAddBlackName 进程代理 添加黑名单进程名，添加黑名单后SunnyNet将不会为它代理，即使开启了代理全部进程 所有 SunnyNet 通用
+func (s *Sunny) ProcessAddBlackName(Name string) *Sunny {
+	ProcessCheck.AddBlackName(Name)
+	//CrossCompiled.NFapi_CloseNameTCP(Name)
+	return s
+}
+
+// ProcessDelPid 删除BlackPID  所有 SunnyNet 通用
+func (s *Sunny) ProcessDelBlackPid(Pid int) *Sunny {
+	ProcessCheck.DelBlackPid(uint32(Pid))
+	//CrossCompiled.NFapi_ClosePidTCP(Pid)
+	return s
+}
+
+// ProcessAddBlackPid 进程代理 添加BlackPID 所有 SunnyNet 通用
+func (s *Sunny) ProcessAddBlackPid(Pid int) *Sunny {
+	ProcessCheck.AddBlackPid(uint32(Pid))
+	//CrossCompiled.NFapi_ClosePidTCP(Pid)
+	return s
+}
+
+// ProcessCancelBlackAll 进程代理 取消全部已设置的黑名单进程名
+func (s *Sunny) ProcessCancelBlackAll() *Sunny {
+	ProcessCheck.CancelBlackAll()
+	//CrossCompiled.NFapi_ClosePidTCP(-1)
+	return s
+}
+
 // SetScriptCall 设置脚本代码的回调函数
 func (s *Sunny) SetScriptCall(log GoScriptCode.LogFuncInterface, save GoScriptCode.SaveFuncInterface) {
 	s.lock.Lock()

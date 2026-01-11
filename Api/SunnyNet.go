@@ -1457,6 +1457,58 @@ func ProcessCancelAll(SunnyContext int) {
 	}
 }
 
+
+// ProcessDelBlackName 进程代理 删除黑名单进程名
+func ProcessDelBlackName(SunnyContext int, s string) {
+	SunnyNet.SunnyStorageLock.Lock()
+	w := SunnyNet.SunnyStorage[SunnyContext]
+	SunnyNet.SunnyStorageLock.Unlock()
+	if w != nil {
+		w.ProcessDelBlackName(s)
+	}
+}
+
+// ProcessAddBlackName 进程代理 添加黑名单进程名
+func ProcessAddBlackName(SunnyContext int, s string) {
+	SunnyNet.SunnyStorageLock.Lock()
+	w := SunnyNet.SunnyStorage[SunnyContext]
+	SunnyNet.SunnyStorageLock.Unlock()
+	if w != nil {
+		w.ProcessAddBlackName(s)
+	}
+}
+
+// ProcessDelBlackPid 进程代理 删除黑名单PID
+func ProcessDelBlackPid(SunnyContext, pid int) {
+	SunnyNet.SunnyStorageLock.Lock()
+	w := SunnyNet.SunnyStorage[SunnyContext]
+	SunnyNet.SunnyStorageLock.Unlock()
+	if w != nil {
+		w.ProcessDelBlackPid(pid)
+	}
+}
+
+// ProcessAddBlackPid 进程代理 添加黑名单PID
+func ProcessAddBlackPid(SunnyContext, pid int) {
+	SunnyNet.SunnyStorageLock.Lock()
+	w := SunnyNet.SunnyStorage[SunnyContext]
+	SunnyNet.SunnyStorageLock.Unlock()
+	if w != nil {
+		w.ProcessAddBlackPid(pid)
+	}
+}
+
+// ProcessCancelBlackAll 进程代理 取消全部已设置的黑名单进程名
+func ProcessCancelBlackAll(SunnyContext int) {
+	SunnyNet.SunnyStorageLock.Lock()
+	w := SunnyNet.SunnyStorage[SunnyContext]
+	SunnyNet.SunnyStorageLock.Unlock()
+	if w != nil {
+		w.ProcessCancelBlackAll()
+	}
+}
+
+
 // SetScriptCode 加载用户的脚本代码
 func SetScriptCode(SunnyContext int, code string) string {
 	SunnyNet.SunnyStorageLock.Lock()

@@ -21,6 +21,9 @@ var Pid = make(map[uint32]bool)
 var Proxy = make(map[uint16]DrvInfo)
 var Lock sync.Mutex
 
+var BlackName = make(map[string]bool)
+var BlackPid = make(map[uint32]bool)
+
 var HookProcess bool
 
 func HookAllProcess(open, StopNetwork bool) {
@@ -155,6 +158,48 @@ func CancelAll() bool {
 	for u := range Pid {
 		ClosePidTCP(int(u))
 		delete(Pid, u)
+	}
+	Lock.Unlock()
+	return true
+}
+
+func AddBlackName(u string) bool {
+	Lock.Lock()
+	BlackName[strings.ToLower(u)] = true
+	Lock.Unlock()
+	CloseNameTCP(u)
+	return true
+}
+func DelBlackName(u string) bool {
+	Lock.Lock()
+	delete(BlackName, strings.ToLower(u))
+	Lock.Unlock()
+	CloseNameTCP(u)
+	return true
+}
+func AddBlackPid(u uint32) bool {
+	Lock.Lock()
+	BlackPid[u] = true
+	Lock.Unlock()
+	ClosePidTCP(int(u))
+	return true
+}
+func DelBlackPid(u uint32) bool {
+	Lock.Lock()
+	delete(BlackPid, u)
+	Lock.Unlock()
+	ClosePidTCP(int(u))
+	return true
+}
+func CancelBlackAll() bool {
+	Lock.Lock()
+	for u := range BlackName {
+		CloseNameTCP(u)
+		delete(BlackName, u)
+	}
+	for u := range BlackPid {
+		ClosePidTCP(int(u))
+		delete(BlackPid, u)
 	}
 	Lock.Unlock()
 	return true

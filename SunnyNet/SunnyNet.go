@@ -2230,6 +2230,10 @@ func (s *Sunny) OpenDrive(DevMode int) bool {
 		fmt.Println("你已选择另一个模式,不可切换")
 		return false
 	}
+	if s.cache == nil {
+		s.cache = newCache(s)
+	}
+	s.cache.StartJanitor()
 	if DevMode == CrossCompiled.DrvNF {
 		divert = &CrossCompiled.NFAPI{TCP: s.handleClientConn, UDP: s.udpSendReceive, Sunny: s}
 	} else if DevMode == CrossCompiled.DrvTun {
@@ -2508,7 +2512,7 @@ func (s *Sunny) handleClientConn(conn net.Conn) {
 	req := &proxyRequest{Global: s, TcpCall: s.tcpCallback, HttpCall: s.httpCallback, wsCall: s.websocketCallback, TcpGoCall: s.goTcpCallback, HttpGoCall: s.goHttpCallback, wsGoCall: s.goWebsocketCallback, SendTimeout: 0} //原始请求对象
 
 	Theoni := atomic.AddInt64(&public.Theology, 1)
-	//存入会话列表 方便停止时，将所以连接断开
+	//存入会话列表 方便停止时，将所有连接断开
 	s.lock.Lock()
 	s.connList[Theoni] = conn
 	//构造一个请求中间件

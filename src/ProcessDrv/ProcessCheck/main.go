@@ -221,6 +221,13 @@ func CheckPidByName(pid int32, name string) bool {
 	Lock.Lock()
 	defer Lock.Unlock()
 	if HookProcess {
+		if BlackName[strings.ToLower(name)] == false {
+			if BlackPid[uint32(pid)] == true {
+				return true
+			}
+		}else{
+			return true
+		}
 		return false
 	}
 	if Name[strings.ToLower(name)] == false {

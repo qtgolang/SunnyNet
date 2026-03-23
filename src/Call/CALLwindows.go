@@ -58,7 +58,7 @@ func Call(address int, arg ...interface{}) int {
 	}
 	var ret = uintptr(0)
 	ch <- true
-	ret, _, _ = syscall.Syscall18(uintptr(address), uintptr(Len), args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11], args[12], args[13], args[14], args[15], args[16], args[17])
+	ret, _, _ = syscall.SyscallN(uintptr(address), uintptr(Len), args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11], args[12], args[13], args[14], args[15], args[16], args[17])
 	<-ch
 	for index := 0; index < len(Frees); index++ {
 		C.free(unsafe.Pointer(Frees[index]))

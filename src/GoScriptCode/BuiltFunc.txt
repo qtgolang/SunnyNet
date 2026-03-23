@@ -220,13 +220,8 @@ func GoHTTPRequest(method, url string, data any, header ...any) ([]byte, http.He
  	case []byte:
  		rBody = v
  		break
-
  	}
- 	rData := io.NopCloser(bytes.NewBuffer(rBody))
- 	defer func() {
- 		_ = rData.Close()
- 	}()
- 	request, err := http.NewRequest(strings.ToUpper(method), url, rData)
+ 	request, err := http.NewRequest(strings.ToUpper(method), url, bytes.NewBuffer(rBody))
  	if len(header) > 0 {
  		h, ok := header[0].(Header)
  		if ok {

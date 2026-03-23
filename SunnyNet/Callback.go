@@ -108,6 +108,13 @@ func (s *proxyRequest) CallbackTCPRequest(callType int, _msg *public.TcpMsg, Rem
 			}
 		}
 	}
+
+	if callType == public.SunnyNetMsgTypeTCPClientSend || callType == public.SunnyNetMsgTypeTCPAboutToConnect {
+		s.TCP.Send = msg
+	} else {
+		s.TCP.Receive = msg
+	}
+
 	if s.TcpCall < 10 {
 		if s.TcpGoCall != nil {
 			s.TcpGoCall(m)
@@ -122,19 +129,14 @@ func (s *proxyRequest) CallbackTCPRequest(callType int, _msg *public.TcpMsg, Rem
 		return
 	}
 	if callType == public.SunnyNetMsgTypeTCPConnectOK {
-		Call.Call(s.TcpCall, s.Global.SunnyContext, LocalAddr, hostname, int(callType), MessageId, msg.Data.Bytes(), msg.Data.Len(), s.Theology, pid)
+		Call.Call(s.TcpCall, s.Global.SunnyContext, LocalAddr, hostname, callType, MessageId, msg.Data.Bytes(), msg.Data.Len(), s.Theology, pid)
 		return
 	}
 	if callType == public.SunnyNetMsgTypeTCPClose {
-		Call.Call(s.TcpCall, s.Global.SunnyContext, LocalAddr, hostname, int(callType), MessageId, []byte{}, 0, s.Theology, pid)
+		Call.Call(s.TcpCall, s.Global.SunnyContext, LocalAddr, hostname, callType, MessageId, []byte{}, 0, s.Theology, pid)
 		return
 	}
-	if callType == public.SunnyNetMsgTypeTCPClientSend || callType == public.SunnyNetMsgTypeTCPAboutToConnect {
-		s.TCP.Send = msg
-	} else {
-		s.TCP.Receive = msg
-	}
-	Call.Call(s.TcpCall, s.Global.SunnyContext, LocalAddr, hostname, int(callType), MessageId, msg.Data.Bytes(), msg.Data.Len(), s.Theology, pid)
+	Call.Call(s.TcpCall, s.Global.SunnyContext, LocalAddr, hostname, callType, MessageId, msg.Data.Bytes(), msg.Data.Len(), s.Theology, pid)
 }
 func (s *proxyRequest) UpdateRawTarget(i uint32) {
 	s.rawTarget = i
@@ -211,6 +213,7 @@ func (s *proxyRequest) CallbackBeforeRequest() {
 	err := ""
 	if m._Break {
 		err = debug
+		m._err = debug
 	}
 
 	if s.HttpCall < 10 {
@@ -274,6 +277,7 @@ func (s *proxyRequest) CallbackBeforeResponse() {
 	err := ""
 	if m._Break {
 		err = debug
+		m._err = debug
 	}
 	if s.HttpCall < 10 {
 		if s.HttpGoCall != nil {
@@ -387,7 +391,7 @@ func (s *proxyRequest) CallbackError(err string) {
 	if s.Request.URL != nil {
 		Url = s.Request.URL.String()
 	}
-	Call.Call(s.HttpCall, s.Global.SunnyContext, s.Theology, MessageId, int(public.HttpRequestFail), Method, Url, err, pid)
+	Call.Call(s.HttpCall, s.Global.SunnyContext, s.Theology, MessageId, public.HttpRequestFail, Method, Url, err, pid)
 
 }
 

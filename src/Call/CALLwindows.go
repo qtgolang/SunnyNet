@@ -13,16 +13,27 @@ import (
 )
 
 func Call(address int, arg ...interface{}) int {
-
-	if address < 10 {
+	if address == 0 {
 		return 0
 	}
+
 	var args []uintptr
-	var Frees []*C.char
-	for _, name := range arg {
-		switch val := name.(type) {
+	var frees []unsafe.Pointer
+
+	defer func() {
+		for _, p := range frees {
+			C.free(p)
+		}
+	}()
+
+	for _, v := range arg {
+		switch val := v.(type) {
 		case uintptr:
 			args = append(args, val)
+		case unsafe.Pointer:
+			args = append(args, uintptr(val))
+		case nil:
+			args = append(args, 0)
 		case int:
 			args = append(args, uintptr(val))
 		case int8:
@@ -33,35 +44,45 @@ func Call(address int, arg ...interface{}) int {
 			args = append(args, uintptr(val))
 		case int64:
 			args = append(args, uintptr(val))
+		case uint:
+			args = append(args, uintptr(val))
+		case uint8:
+			args = append(args, uintptr(val))
+		case uint16:
+			args = append(args, uintptr(val))
+		case uint32:
+			args = append(args, uintptr(val))
+		case uint64:
+			args = append(args, uintptr(val))
 		case bool:
 			if val {
-				args = append(args, uintptr(1))
+				args = append(args, 1)
 			} else {
-				args = append(args, uintptr(0))
+				args = append(args, 0)
 			}
 		case string:
-			n := C.CString(val)
-			Frees = append(Frees, n)
-			args = append(args, uintptr(unsafe.Pointer(n)))
+			p := C.CString(val)
+			frees = append(frees, unsafe.Pointer(p))
+			args = append(args, uintptr(unsafe.Pointer(p)))
 		case []byte:
-			n := C.CString(string(val))
-			Frees = append(Frees, n)
-			args = append(args, uintptr(unsafe.Pointer(n)))
+			// 原始字节不要用 CString，避免被 0 截断
+			if len(val) == 0 {
+				args = append(args, 0)
+				continue
+			}
+			p := C.CBytes(val)
+			frees = append(frees, p)
+			args = append(args, uintptr(p))
 		default:
 			panic("参数类型错误")
-			return -1 //如果有其他参数类型 直接报错返回
 		}
 	}
-	Len := len(args)
-	for index := 0; index < (18 - Len); index++ {
-		args = append(args, uintptr(0))
-	}
-	var ret = uintptr(0)
+
 	ch <- true
-	ret, _, _ = syscall.SyscallN(uintptr(address), uintptr(Len), args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11], args[12], args[13], args[14], args[15], args[16], args[17])
-	<-ch
-	for index := 0; index < len(Frees); index++ {
-		C.free(unsafe.Pointer(Frees[index]))
-	}
+	defer func() {
+		<-ch
+	}()
+
+	ret, _, _ := syscall.SyscallN(uintptr(address), args...)
 	return int(ret)
 }

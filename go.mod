@@ -23,10 +23,12 @@ require (
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842
 	golang.org/x/image v0.23.0
 	golang.org/x/net v0.38.0
+	golang.org/x/sync v0.12.0
 	golang.org/x/sys v0.31.0
 	golang.org/x/term v0.30.0
 	golang.org/x/text v0.23.0
 	google.golang.org/protobuf v1.36.1
+	software.sslmate.com/src/go-pkcs12 v0.7.0
 )
 
 require (
@@ -46,7 +48,6 @@ require (
 	github.com/tklauser/numcpus v0.8.0 // indirect
 	go.uber.org/mock v0.5.0 // indirect
 	golang.org/x/mod v0.18.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/tools v0.22.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

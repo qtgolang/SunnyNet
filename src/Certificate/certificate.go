@@ -3,13 +3,15 @@ package Certificate
 import (
 	"encoding/pem"
 	"errors"
-	"github.com/qtgolang/SunnyNet/src/crypto/pkcs"
-	"github.com/qtgolang/SunnyNet/src/crypto/tls"
-	"github.com/qtgolang/SunnyNet/src/public"
 	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/qtgolang/SunnyNet/src/crypto/pkcs"
+	"github.com/qtgolang/SunnyNet/src/crypto/tls"
+	"github.com/qtgolang/SunnyNet/src/openssl"
+	"github.com/qtgolang/SunnyNet/src/public"
 )
 
 func AddP12Certificate(privateKeyName, privatePassword string) (*tls.Certificate, string, string, string, error) {
@@ -17,7 +19,10 @@ func AddP12Certificate(privateKeyName, privatePassword string) (*tls.Certificate
 	Certificates := ""
 	k, e := getPrivateKey(privateKeyName, privatePassword)
 	if k == nil {
-		return nil, Certificates, PRIVATE, public.NULL, errors.New("Loading P12 Error  :" + e.Error())
+		k, e = openssl.GetPrivateKey(privateKeyName, privatePassword)
+		if e != nil {
+			return nil, Certificates, PRIVATE, public.NULL, errors.New("Loading P12 Error  :" + e.Error())
+		}
 	}
 	var pemData []byte
 	for _, b := range k {

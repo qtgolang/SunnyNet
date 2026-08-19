@@ -5,6 +5,10 @@ package GoScriptCode
 
 import (
 	"fmt"
+	"reflect"
+	"strconv"
+	"strings"
+
 	"github.com/qtgolang/SunnyNet/src/Call"
 	"github.com/qtgolang/SunnyNet/src/Compress"
 	"github.com/qtgolang/SunnyNet/src/GoScriptCode/base"
@@ -19,9 +23,6 @@ import (
 	"github.com/qtgolang/SunnyNet/src/public"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
-	"reflect"
-	"strconv"
-	"strings"
 )
 
 func init() {
@@ -169,6 +170,10 @@ func init() {
 	}
 	Symbols["github.com/qtgolang/SunnyNet/src/public/public"] = map[string]reflect.Value{
 		"Free": reflect.ValueOf(public.Free),
+	}
+	Symbols["SunnyNet/aes/gcm/gcm"] = map[string]reflect.Value{
+		"AES_GCM_Encrypt": reflect.ValueOf(AES_GCM_Encrypt),
+		"AES_GCM_Decrypt": reflect.ValueOf(AES_GCM_Decrypt),
 	}
 	Symbols["github.com/qtgolang/SunnyNet/src/RSA/RSA"] = map[string]reflect.Value{
 		"PubKeyIO": reflect.ValueOf(RSA.PubKeyIO),

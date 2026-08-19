@@ -28,6 +28,7 @@ import (
 	"strings"
 	"reflect"
 	"SunnyNet/src/Call"
+	"SunnyNet/aes/gcm"
 	"SunnyNet/src/mmCompress"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -972,6 +973,107 @@ func Go3DESECBDecrypt(key any, Padding string, data []byte) (_b []byte, _e error
 
 	padding := int(decryptData[length-1])
 	return decryptData[:(length - padding)], nil
+}
+func AES_GCM_Encrypt(key, nonce , data any, aad ...any) (string, error) {
+	_key := make([]byte, 0)
+	{
+		switch v := key.(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+	}
+	_nonce := make([]byte, 0)
+	{
+		switch v := nonce.(type) {
+		case string:
+			_nonce = []byte(v)
+			break
+		case []byte:
+			_nonce = v
+			break
+		}
+	}
+
+	_data := make([]byte, 0)
+	{
+		switch v := data.(type) {
+		case string:
+			_data = []byte(v)
+			break
+		case []byte:
+			_data = v
+			break
+		}
+	}
+
+	_aad := make([]byte, 0)
+	{
+        if len(aad)>0{
+		    switch v := aad[0].(type) {
+		    case string:
+			    _aad = []byte(v)
+			    break
+		    case []byte:
+			    _aad = v
+			    break
+		    }
+        }
+	}
+
+	return gcm.AES_GCM_Encrypt(_key,_nonce,_data,_aad)
+}
+
+func AES_GCM_Decrypt(key, nonce any , data any,  args ...any) ([]byte, error) {
+	_key := make([]byte, 0)
+	{
+		switch v := key.(type) {
+		case string:
+			_key = []byte(v)
+			break
+		case []byte:
+			_key = v
+			break
+		}
+	}
+	_nonce := make([]byte, 0)
+	{
+		switch v := nonce.(type) {
+		case string:
+			_nonce = []byte(v)
+			break
+		case []byte:
+			_nonce = v
+			break
+		}
+	}
+
+	_aad := make([]byte, 0)
+	_isTag := true
+	{
+        if len(args)>0{
+		    switch v := args[0].(type) {
+		    case bool:
+			    _isTag = v
+			    break
+		    }
+        }
+        if len(args)>1{
+		    switch v := args[1].(type) {
+		    case string:
+			    _aad = []byte(v)
+			    break
+		    case []byte:
+			    _aad = v
+			    break
+		    }
+        }
+	}
+
+	return gcm.AES_GCM_Decrypt(_key,_nonce,data,_aad,_isTag)
 }
 
 func _AES_keyFactory(_key []byte) []byte {

@@ -1,7 +1,7 @@
-window.builtCmdWords = [
+window.builtCmdWords =  [
     {
         name: ['Log', 'log', 'print', "Println", "日志输出", "打印日志"],
-        zName: [],
+        zName: [['dyrz',"打印日志"], ['rzsc',"日志输出"]],
         insertText: 'Log(${1:str}$0)',
         detail: "打印日志",
         contents: [
@@ -13,7 +13,7 @@ window.builtCmdWords = [
     },
     {
         name: ['Sprintf', '格式化字符串', '格式化文本'],
-        zName: [],
+        zName: [['gshzfc',"格式化字符串"], ['gshwb',"格式化文本"]],
         insertText: 'fmt.Sprintf(${1:format}$0,${2:value})',
         detail: "格式化字符串,支持任意参数",
         contents: [
@@ -25,7 +25,7 @@ window.builtCmdWords = [
     },
     {
         name: ['GetPidName', 'PID获取进程名', '获取进程名'],
-        zName: [],
+        zName: [['hqjcm',"获取进程名"]],
         insertText: 'GetPidName(Conn.PID())$0',
         detail: "获取指定PID对应的进程名称",
         contents: [
@@ -37,8 +37,8 @@ window.builtCmdWords = [
     },
     {
         name: ['Sleep', 'sleep', '延迟', '延时'],
-        zName: [],
-        insertText: 'Sleep(${1:1000}$0)',
+        zName: [['yc',"延迟"],['ys',"延时"]],
+        insertText: 'time.Sleep(time.Duration(${1:1000}$0) * time.Millisecond)',
         detail: "延迟后续代码执行",
         contents: [
             {value: '**延迟**'},
@@ -49,7 +49,7 @@ window.builtCmdWords = [
     },
     {
         name: ['计次循环', 'for'],
-        zName: [],
+        zName: [['jcxh',"计次循环"]],
         insertText: 'for i := 0; i < ${1:10}; i++ {\n\t$0\n}',
         detail: "计次循环",
         contents: [
@@ -60,7 +60,7 @@ window.builtCmdWords = [
     },
     {
         name: ['到循环尾', 'continue'],
-        zName: [],
+        zName: [['dxhw',"到循环尾"]],
         insertText: 'continue$0',
         detail: "到循环尾",
         contents: [
@@ -71,7 +71,7 @@ window.builtCmdWords = [
     },
     {
         name: ['跳出', 'break'],
-        zName: [],
+        zName: [['tc',"跳出"]],
         insertText: 'break$0',
         detail: "跳出",
         contents: [
@@ -84,30 +84,8 @@ window.builtCmdWords = [
         ]
     },
     {
-        name: ['真', 'true'],
-        zName: [],
-        insertText: 'true',
-        detail: "真",
-        contents: [
-            {value: '**真**'},
-            {value: '**示例代码**'},
-            {value: '```go\ntrue\n```'}
-        ]
-    },
-    {
-        name: ['假', 'false'],
-        zName: [],
-        insertText: 'false',
-        detail: "假",
-        contents: [
-            {value: '**假**'},
-            {value: '**示例代码**'},
-            {value: '```go\nfalse\n```'}
-        ]
-    },
-    {
         name: ['如果', 'if'],
-        zName: [],
+        zName: [['rg',"如果"]],
         insertText: '\tif ${1:Conn.Type() == 1}$0 {\n\t\t\n\t}else{\n\n\t}',
         detail: "如果",
         contents: [
@@ -118,7 +96,7 @@ window.builtCmdWords = [
     },
     {
         name: ['如果真'],
-        zName: [],
+        zName: [['rgz',"如果真"]],
         insertText: '\tif ${1:Conn.Type() == 1}$0 {\n\t\t\n\t}',
         detail: "如果真",
         contents: [
@@ -129,7 +107,7 @@ window.builtCmdWords = [
     },
     {
         name: ['否则', 'else'],
-        zName: [],
+        zName: [['fz',"否则"]],
         insertText: 'else{\n$0\n}',
         detail: "否则",
         contents: [
@@ -139,8 +117,8 @@ window.builtCmdWords = [
         ]
     },
     {
-        name: ["多项选择", "选择", 'switch', 'Switch'],
-        zName: [],
+        name: ["多项选择","选择",'switch', 'Switch'],
+        zName: [['dxxz',"多项选择"],['xz',"选择"]],
         insertText: 'switch ${1:obj}$0 {\n' +
             '\tcase 0:\n' +
             '\t\tlog("switch -> zero...")\n' +
@@ -160,8 +138,8 @@ window.builtCmdWords = [
         ]
     },
     {
-        name: ["如果匹配项", 'case'],
-        zName: [],
+        name: ["如果匹配项",'case'],
+        zName: [['rgppx',"如果匹配项"]],
         insertText: 'case ${1:"obj"}$0:\r\tbreak\n',
         detail: "如果匹配项",
         contents: [
@@ -172,8 +150,8 @@ window.builtCmdWords = [
         ]
     },
     {
-        name: ["穿透到下个匹配", 'fallthrough'],
-        zName: [],
+        name: ["穿透到下个匹配",'fallthrough'],
+        zName: [['ctdxgpp',"穿透到下个匹配"]],
         insertText: 'fallthrough\n',
         detail: "穿透到下个匹配",
         contents: [
@@ -186,7 +164,7 @@ window.builtCmdWords = [
     },
     {
         name: ['声明变量'],
-        zName: [],
+        zName: [['smbl',"声明变量"]],
         insertText: 'value :=${1:"format"}$0',
         detail: "声明变量",
         contents: [
@@ -198,7 +176,7 @@ window.builtCmdWords = [
     },
     {
         name: ['启动协程', "go"],
-        zName: [],
+        zName: [['qdxc',"启动协程"]],
         insertText: 'go func(){\n\t$0\n}()',
         detail: "启动协程",
         contents: [
@@ -210,7 +188,7 @@ window.builtCmdWords = [
     },
     {
         name: ['GoHexEncode', 'HexEncode', '字符串到十六进制', '字符串转十六进制', '文本到十六进制', '字节集到十六进制', 'bytes到十六进制'],
-        zName: [],
+        zName: [['zfcdsljz',"字符串到十六进制"],['zfczsljz',"字符串转十六进制"],['wbdsljz',"文本到十六进制"],['zjjdsljz',"字节集到十六进制"]],
         insertText: 'GoHexEncode(${1:bs}$0)',
         detail: "字符串、字节集到十六进制",
         contents: [
@@ -223,7 +201,7 @@ window.builtCmdWords = [
     },
     {
         name: ['GoHexDecode', 'HexDecode', '十六进制到字节集', '十六进制转字节集'],
-        zName: [],
+        zName: [['sljzdzjj',"十六进制到字节集"],['sljzzzjj',"十六进制转字节集"]],
         insertText: 'GoHexDecode(${1:hexStr}$0)',
         detail: "十六进制到字节集",
         contents: [
@@ -278,7 +256,7 @@ window.builtCmdWords = [
     },
     {
         name: ['十六进制到Base64', 'HexToBase64'],
-        zName: [],
+        zName: [["sljzdBase64","十六进制到Base64"]],
         insertText: 'HexToBase64(${1:str}$0)',
         detail: "十六进制到解码Base64",
         contents: [
@@ -291,7 +269,7 @@ window.builtCmdWords = [
     },
     {
         name: ['响应请求404', '返回404', '拦截响应404', '修改响应为404', "HTTPResponse404"],
-        zName: [],
+        zName: [["xyqq404","响应请求404"],["fh404","返回404"],["ljxy404","拦截响应404"],["xgxyw404","修改响应为404"]],
         insertText: 'HTTPResponse404(Conn)$0',
         detail: "修改响应为404",
         contents: [
@@ -304,7 +282,7 @@ window.builtCmdWords = [
     },
     {
         name: ['响应请求200空Json', '返回200空Json', '拦截响应200空Json', '修改响应为200空Json', "HTTPResponse200JSon"],
-        zName: [],
+        zName: [["xyqq200kjson","响应请求200空Json"],["fh200kjson","返回200空Json"],["ljxy200kjson","拦截响应200空Json"],["xgxyw200kjson","修改响应为200空Json"]],
         insertText: 'HTTPResponse200JSon(Conn)$0',
         detail: "修改响应为200Json",
         contents: [
@@ -317,7 +295,7 @@ window.builtCmdWords = [
     },
     {
         name: ['响应请求200空数组', '返回200空数组', '拦截响应200空数组', '修改响应为200空数组', "HTTPResponse200Array"],
-        zName: [],
+        zName: [["xyqq200ksz","响应请求200空数组"],["fh200ksz","返回200空数组"],["ljxy200ksz","拦截响应200空数组"],["xgxyw200ksz","修改响应为200空数组"]],
         insertText: 'HTTPResponse200Array(Conn)$0',
         detail: "修改响应为200空数组",
         contents: [
@@ -330,7 +308,7 @@ window.builtCmdWords = [
     },
     {
         name: ['响应请求200空内容', '返回200空内容', '拦截响应200空内容', '修改响应为200空内容', "HTTPResponse200"],
-        zName: [],
+        zName: [["xyqq200knr","响应请求200空内容"],["fh200knr","返回200空内容"],["ljxy200knr","拦截响应200空内容"],["xgxyw200knr","修改响应为200空内容"]],
         insertText: 'HTTPResponse200(Conn)$0',
         detail: "修改响应为200空内容",
         contents: [
@@ -343,7 +321,7 @@ window.builtCmdWords = [
     },
     {
         name: ['响应请求200图片', '返回200图片', '拦截响应200图片', '修改响应为200图片', "HTTPResponse200IMG"],
-        zName: [],
+        zName: [["xyqq200tp","响应请求200图片"],["fh200tp","返回200图片"],["ljxy200tp","拦截响应200图片"],["xgxyw200tp","修改响应为200图片"]],
         insertText: 'HTTPResponse200IMG(Conn)$0',
         detail: "修改响应为200图片",
         contents: [
@@ -356,7 +334,7 @@ window.builtCmdWords = [
     },
     {
         name: ['取数据摘要', '取数据MD5', "GoMD5"],
-        zName: [],
+        zName: [["qsjzy","取数据摘要"],["qsjmd5","取数据MD5"]],
         insertText: 'GoMD5(${1:value}$0)',
         detail: "取数据MD5",
         contents: [
@@ -370,7 +348,7 @@ window.builtCmdWords = [
     },
     {
         name: ['取数据SHA1', "GoSHA1"],
-        zName: [],
+        zName: [["qsjsha1","取数据SHA1"]],
         insertText: 'GoSHA1(${1:value}$0)',
         detail: "取数据SHA1",
         contents: [
@@ -384,7 +362,7 @@ window.builtCmdWords = [
     },
     {
         name: ['取数据SHA256', "GoSHA256"],
-        zName: [],
+        zName: [["qsjsha256","取数据SHA256"]],
         insertText: 'GoSHA256(${1:value}$0)',
         detail: "取数据SHA256",
         contents: [
@@ -398,7 +376,7 @@ window.builtCmdWords = [
     },
     {
         name: ['取数据SHA512', "GoSHA512"],
-        zName: [],
+        zName: [["qsjsha512","取数据SHA512"]],
         insertText: 'GoSHA512(${1:value}$0)',
         detail: "取数据SHA512",
         contents: [
@@ -547,7 +525,6 @@ window.builtCmdWords = [
     {
         name: ['GoAESECBEncode', 'AES_ECB_加密'],
         zName: [],
-        zName: [],
         insertText: 'GoAESECBEncode(${1:key}$0,"PKCS7",cipher)',
         detail: "AES ECB 加密",
         contents: [
@@ -644,7 +621,7 @@ window.builtCmdWords = [
     },
     {
         name: ['网页访问对象', 'sendHTTPRequest', 'GoHTTPRequest', "发送HTTP请求"],
-        zName: [],
+        zName: [["wyfwdx","网页访问对象"],["fshttpqq","发送HTTP请求"]],
         insertText: 'GoHTTPRequest(${1:method}$0,${2:url},${3:data},${4:header})',
         detail: "发送HTTP请求",
         contents: [
@@ -662,7 +639,7 @@ window.builtCmdWords = [
 
     {
         name: ['DelSpace', '删除所有空格'],
-        zName: [],
+        zName: [["scsykg","删除所有空格"]],
         insertText: 'strings.ReplaceAll(strings.ReplaceAll(${1:str}$0, " ", ""), "\u3000", "")',
         detail: "删除所有空格",
         contents: [
@@ -676,7 +653,7 @@ window.builtCmdWords = [
     },
     {
         name: ['TrimSpace', '删除首尾空格'],
-        zName: [],
+        zName: [["scswkg","删除首尾空格"]],
         insertText: 'strings.TrimSpace(${1:str}$0)',
         detail: "删除首尾空格",
         contents: [
@@ -690,7 +667,7 @@ window.builtCmdWords = [
     },
     {
         name: ['ToUpper', '字符串到大写', "到大写"],
-        zName: [],
+        zName: [["zfcddx","字符串到大写"],["ddx","到大写"]],
         insertText: 'strings.ToUpper(${1:str}$0)',
         detail: "字符串到大写",
         contents: [
@@ -704,7 +681,7 @@ window.builtCmdWords = [
     },
     {
         name: ['ToLower', '字符串到小写', "到小写"],
-        zName: [],
+        zName: [["zfcdxx","字符串到小写"],["dxx","到小写"]],
         insertText: 'strings.ToLower(${1:str}$0)',
         detail: "字符串到小写",
         contents: [
@@ -717,16 +694,16 @@ window.builtCmdWords = [
         ]
     },
     {
-        name: ['BytesReplace', "ReplaceAll", '字节集替换', '字节数组替换', "替换字节集"],
-        zName: [],
+        name: ['BytesReplace', "ReplaceAll", '字节集替换', "替换字节集"],
+        zName: [["zjjth","字节集替换"],["thzjj","替换字节集"]],
         insertText: 'BytesReplace(${1:bs}$0, ${2:old}, ${3:new})',
-        detail: "替换字节数组",
+        detail: "替换字节集",
         contents: [
-            {value: '**替换字节数组**'},
+            {value: '**替换字节集**'},
             {value: '**参数说明**'},
-            {value: '参数1:bs    字节集  [原始字节数组]\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000'},
-            {value: '参数2:old    字节集  [要替换的字节数组]'},
-            {value: '参数3:new    字节集  [替换为的字节数组]'},
+            {value: '参数1:bs    字节集  [原始字节集]\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000\u3000'},
+            {value: '参数2:old    字节集  [要替换的字节集]'},
+            {value: '参数3:new    字节集  [替换为的字节集]'},
             {value: '返回值:字符串'},
             {value: '**示例代码**'},
             {value: '```go\nBytesReplace([]byte("123456654321"), []byte("5665"), []byte("---"))\n//将返回1234---4321的字节集\n```'},
@@ -734,7 +711,7 @@ window.builtCmdWords = [
     },
     {
         name: ['StringReplace', '字符串替换', "替换字符串"],
-        zName: [],
+        zName: [["zfcth","字符串替换"],["thzfc","替换字符串"]],
         insertText: 'StringReplace(${1:str}$0, ${2:old}, ${3:new})',
         detail: "替换字符串",
         contents: [
@@ -750,7 +727,7 @@ window.builtCmdWords = [
     },
     {
         name: ['Contains', '是否包含字符串', "是否包含字节集"],
-        zName: [],
+        zName: [["sfbhzfc","是否包含字符串"],["sfbhzjj","是否包含字节集"]],
         insertText: 'Contains(${1:s1}$0, ${2:s2})',
         detail: "是否包含 字符串/字节集",
         contents: [
@@ -765,7 +742,7 @@ window.builtCmdWords = [
     },
     {
         name: ['取数组长度', '取长度', '取Map长度', "取Map数量", "取map数量", "len", "取字节集长度", "取协议头数量", "取字符串长度"],
-        zName: [],
+        zName: [["qszcd","取数组长度"],["qcd","取长度"],["qmapcd","取Map长度"],["qmapsl","取map数量"],["qzjjcd","取字节集长度"],["qxytsl","取协议头数量"],["qzfcd","取字符串长度"]],
         insertText: 'len(${1:array}$0)',
         detail: "取字符串长度/字节集长度/数组长度/MAP数量/协议头数量",
         contents: [
@@ -778,8 +755,8 @@ window.builtCmdWords = [
         ]
     },
     {
-        name: ['toBytes', 'StrToBytes', '到字节集', '字符串到字节集', "文本到字节集"],
-        zName: [],
+        name: ['toBytes','StrToBytes', '到字节集', '字符串到字节集', "文本到字节集"],
+        zName: [["dzjj","到字节集"],["zfcdzjj","字符串到字节集"],["wbdzjj","文本到字节集"]],
         insertText: '[]byte(${1:str}$0)',
         detail: "字符串到字节集",
         contents: [
@@ -793,11 +770,11 @@ window.builtCmdWords = [
     },
     {
         name: ['BytesToString', '到字符串', '字节集到字符串'],
-        zName: [],
+        zName: [["dzfc","到字符串"],["zjjdzfc","字节集到字符串"]],
         insertText: 'BytesToString(${1:bs}$0)',
-        detail: "字节集到字符串",
+        detail: "字符串到字节集",
         contents: [
-            {value: '**字节集到字符串**'},
+            {value: '**字符串到字节集**'},
             {value: '**参数说明**'},
             {value: '参数1:bs     字节集类型  [待转换的字节集]'},
             {value: '返回值:字符串'},
@@ -806,12 +783,12 @@ window.builtCmdWords = [
         ]
     },
     {
-        name: ['字节集拼接', '字节数组拼接', '拼接字节集', 'BytesAdd'],
-        zName: [],
+        name: ['字节集拼接', '拼接字节集', 'BytesAdd'],
+        zName: [["zjjpj","字节集拼接"],["pjzjj","拼接字节集"]],
         insertText: 'BytesAdd(${1:bs1}$0,${2:bs2})',
-        detail: "字节数组拼接",
+        detail: "字节集拼接",
         contents: [
-            {value: '**字节数组拼接**'},
+            {value: '**字节集拼接**'},
             {value: '**参数说明**'},
             {value: '参数1:bs1     字节集类型'},
             {value: '参数2:bs2     字节集类型'},
@@ -822,7 +799,7 @@ window.builtCmdWords = [
     },
     {
         name: ['取字节集左边', 'GetBytesLeft'],
-        zName: [],
+        zName: [["qzjjzb","取字节集左边"]],
         insertText: 'GetBytesLeft(${1:bs}$0,${2:count})',
         detail: "取字节集左边",
         contents: [
@@ -837,7 +814,7 @@ window.builtCmdWords = [
     },
     {
         name: ['取字符串左边', 'GetStringLeft'],
-        zName: [],
+        zName: [["qzfczb","取字符串左边"]],
         insertText: 'GetStringLeft(${1:str}$0,${2:count})',
         detail: "取字符串左边",
         contents: [
@@ -852,7 +829,7 @@ window.builtCmdWords = [
     },
     {
         name: ['取字节集右边', 'GetBytesRight'],
-        zName: [],
+        zName: [["qzjjyb","取字节集右边"]],
         insertText: 'GetBytesRight(${1:bs}$0,${2:count})',
         detail: "取字节集右边",
         contents: [
@@ -867,7 +844,7 @@ window.builtCmdWords = [
     },
     {
         name: ['取字符串右边', 'GetStringRight'],
-        zName: [],
+        zName: [["qzfcyb","取字符串右边"]],
         insertText: 'GetStringRight(${1:str}$0,${2:count})',
         detail: "取字符串右边",
         contents: [
@@ -882,7 +859,7 @@ window.builtCmdWords = [
     },
     {
         name: ['GetTimestamp10', '取10位时间戳', "取时间戳10位"],
-        zName: [],
+        zName: [["q10wsjc","取10位时间戳"],["qsjc10w","取时间戳10位"]],
         insertText: 'GetTimestamp10()$0',
         detail: "取时间戳10位",
         contents: [
@@ -894,7 +871,7 @@ window.builtCmdWords = [
     },
     {
         name: ['GetTimestamp13', '取13位时间戳', "取时间戳13位"],
-        zName: [],
+        zName: [["q13wsjc","取13位时间戳"],["qsjc13w","取时间戳13位"]],
         insertText: 'GetTimestamp13()$0',
         detail: "取时间戳13位",
         contents: [
@@ -906,7 +883,7 @@ window.builtCmdWords = [
     },
     {
         name: ['IntToString', '数值到字符串', "整数到字符串"],
-        zName: [],
+        zName: [["szdzfc","数值到字符串"],["zsdzfc","整数到字符串"]],
         insertText: 'IntToString(${1:number}$0)',
         detail: "整数到字符串",
         contents: [
@@ -920,8 +897,8 @@ window.builtCmdWords = [
         ]
     },
     {
-        name: ['StringToInt', '字符串到整数', "文本到整数"],
-        zName: [],
+        name: ['StringToInt', '字符串到整数'],
+        zName: [["zfcdzs","字符串到整数"]],
         insertText: 'StringToInt(${1:iStr}$0)',
         detail: "字符串到整数",
         contents: [
@@ -935,7 +912,7 @@ window.builtCmdWords = [
     },
     {
         name: ['WriteFile', '写到文件', "写出文件", "输出到文件"],
-        zName: [],
+        zName: [["xdwj","写到文件"],["xcwj","写出文件"],["scdwj","输出到文件"]],
         insertText: 'WriteFile(${1:filePath}$0,${2:data})',
         detail: "写出文件",
         contents: [
@@ -950,7 +927,7 @@ window.builtCmdWords = [
     },
     {
         name: ['ReadFile', '读入文件', "读取文件"],
-        zName: [],
+        zName: [["drwj","读入文件"],["dqwj","读取文件"]],
         insertText: 'ReadFile(${1:filePath}$0)',
         detail: "读入文件",
         contents: [
@@ -963,22 +940,8 @@ window.builtCmdWords = [
         ]
     },
     {
-        name: ['GetFileSize', "读取文件大小", "取文件大小"],
-        zName: [],
-        insertText: 'GetFileSize(${1:filePath}$0)',
-        detail: "取文件大小",
-        contents: [
-            {value: '**取文件大小**'},
-            {value: '**参数说明**'},
-            {value: '参数1:filePath     字符串类型  [要读取本地文件的全路径]'},
-            {value: '返回值:int64 (返回[-1]:表示读取失败)'},
-            {value: '**示例代码**'},
-            {value: '```go\n\tSize := GetFileSize("c:\\1.txt")\n\tLog("文件大小:",Size)\n```'},
-        ]
-    },
-    {
         name: ['OpenFile', '打开文件', "openFile"],
-        zName: [],
+        zName: [["dkwj","打开文件"]],
         insertText: 'OpenFile(${1:filePath}$0)',
         detail: "打开文件",
         contents: [
@@ -992,7 +955,7 @@ window.builtCmdWords = [
     },
     {
         name: ['是否为指定字符串开始', 'HasPrefix', "hasPrefix"],
-        zName: [],
+        zName: [["sfwzdzfcks","是否为指定字符串开始"]],
         insertText: 'strings.HasPrefix(${1:src}$0,${2:str})',
         detail: "是否为指定字符串开始",
         contents: [
@@ -1007,7 +970,7 @@ window.builtCmdWords = [
     },
     {
         name: ['是否为指定字符串结束', 'HasSuffix', "hasSuffix"],
-        zName: [],
+        zName: [["sfwzdzfcjs","是否为指定字符串结束"]],
         insertText: 'strings.HasSuffix(${1:src}$0,${2:str})',
         detail: "是否为指定字符串结束",
         contents: [
@@ -1022,7 +985,7 @@ window.builtCmdWords = [
     },
     {
         name: ['BytesIndex', '查找字节集位置', "寻找字节集位置"],
-        zName: [],
+        zName: [["czzjjwz","查找字节集位置"],["xzzjjwz","寻找字节集位置"]],
         insertText: 'BytesIndex(${1:bs1}$0,${2:bs2})',
         detail: "查找字节集位置",
         contents: [
@@ -1038,7 +1001,7 @@ window.builtCmdWords = [
     },
     {
         name: ['StringIndex', '查找字符串位置', "寻找字符串位置"],
-        zName: [],
+        zName: [["czzfcwz","查找字符串位置"],["xzzfcwz","寻找字符串位置"]],
         insertText: 'StringIndex(${1:str1}$0,${2:str2})',
         detail: "查找字符串位置",
         contents: [
@@ -1054,11 +1017,11 @@ window.builtCmdWords = [
     },
     {
         name: ['取字符串中间', '取出字符串中间', 'SubString'],
-        zName: [],
+        zName: [["qzfczj","取字符串中间"],["qczfczj","取出字符串中间"]],
         insertText: 'SubString(${1:str}$0,${2:left},${3:Right})',
-        detail: "取字符串中间",
+        detail: "查找字符串位置",
         contents: [
-            {value: '**取字符串中间**'},
+            {value: '**查找字符串位置**'},
             {value: '取出字符串中间部分\u3000\u3000\u3000'},
             {value: '**参数说明**'},
             {value: '参数1:str       字符串类型 [原始字符串]'},
@@ -1224,6 +1187,41 @@ window.builtCmdWords = [
         ]
     },
     {
+        name: ['AES_GCM_Encrypt', 'AES_GCM_加密'],
+        zName: [],
+        insertText: 'AES_GCM_Encrypt(${1:key}$0,${2:iv},${3:cipher},${4:aad})',
+        detail: "AES_GCM_加密",
+        contents: [
+            {value: '**AES GCM 加密**'},
+            {value: '**参数说明**'},
+            {value: '参数1:key    可以是字符串或字节集,根据key长度自动选择128/192/256'},
+            {value: '参数2:i v    可以是字符串或字节集'},
+            {value: '参数3:cipher  要加密的内容,可以是字符串或字节集'},
+            {value: '参数4:aad    附加认证数据 (AAD),可省略'},
+            {value: '两个返回值:字符串,error,(字符串为加密后的base64)'},
+            {value: '**示例代码**'},
+            {value: '```go\nkey:=`1234567890123456`\niv:=`6543210123456789`\ndata,err := AES_GCM_Encrypt(key,iv,Conn.GetRequestBody(),nil)\nif err!=nil {\n\tLog("AES GCM 加密错误",err)\n}\n```'},
+        ]
+    },
+    {
+        name: ['AES_GCM_Decrypt', 'AES_GCM_解密'],
+        zName: [],
+        insertText: 'AES_GCM_Decrypt(${1:key}$0,${2:iv},${3:cipher},${4:isTag},${4:aad})',
+        detail: "AES_GCM_解密",
+        contents: [
+            {value: '**AES GCM 加密**'},
+            {value: '**参数说明**'},
+            {value: '参数1:key    可以是字符串或字节集,根据key长度自动选择128/192/256'},
+            {value: '参数2:i v    可以是字符串或字节集'},
+            {value: '参数3:cipher  要解密的内容,需传入字节集类型'},
+            {value: '参数4:cipher  要解密的内容,是否包含tag信息(默认包含/true)'},
+            {value: '参数5:aad    附加认证数据 (AAD),可省略'},
+            {value: '两个返回值:字节集,error'},
+            {value: '**示例代码**'},
+            {value: '```go\nkey:=`1234567890123456`\niv:=`6543210123456789`\ndata,err := AES_GCM_Decrypt(key,iv,Conn.GetRequestBody(),true,nil)\nif err!=nil {\n\tLog("AES GCM 解密错误",err)\n}\n```'},
+        ]
+    },
+    {
         name: ['PbJSON转pb', 'ProtobufJSON转pb', 'Protobuf还原', "JSON转Protobuf", "JsonToPB"],
         zName: [],
         insertText: 'JsonToPB(${1:jsonText}$0)',
@@ -1238,6 +1236,31 @@ window.builtCmdWords = [
         ]
     },
     {
+        name: ['gjson', 'gjson.Get', 'JSON读取', 'JSON查询'],
+        zName: [['jsondq',"JSON读取"], ['jsoncx',"JSON查询"]],
+        insertText: 'gjson.Get(${1:json}, ${2:path}$0)',
+        detail: "gjson：读取JSON字段",
+        contents: [
+            {value: '**gjson JSON读取**'},
+            {value: '用于从JSON字符串或字节集中按路径读取字段。常用方法：Get、GetBytes、Parse、ParseBytes、Valid、ValidBytes。'},
+            {value: '常用结果读取：String()、Int()、Float()、Bool()、Exists()、Raw。'},
+            {value: '**示例代码**'},
+            {value: '```go\njson := `{"data":{"token":"abc"}}`\ntoken := gjson.Get(json, "data.token").String()\nLog(token)\n```'}
+        ]
+    },
+    {
+        name: ['sjson', 'sjson.Set', 'JSON修改', 'JSON设置'],
+        zName: [['jsonxg',"JSON修改"], ['jsonsz',"JSON设置"]],
+        insertText: 'sjson.Set(${1:json}, ${2:path}, ${3:value}$0)',
+        detail: "sjson：修改JSON字段",
+        contents: [
+            {value: '**sjson JSON修改**'},
+            {value: '用于设置或删除JSON字符串/字节集中的指定路径。常用方法：Set、SetBytes、SetRaw、Delete、DeleteBytes。'},
+            {value: '**示例代码**'},
+            {value: '```go\njson := `{"data":{"token":"old"}}`\nnewJson, err := sjson.Set(json, "data.token", "abc")\nif err != nil {\n\tLog(err)\n}\nLog(newJson)\n```'}
+        ]
+    },
+    {
         name: ['JSON解析', 'JsonParse'],
         zName: [],
         insertText: 'JsonParse(${1:jsonText}$0)',
@@ -1248,19 +1271,18 @@ window.builtCmdWords = [
             {value: '参数1:jsonText       文本型类型'},
             {value: '返回值:JSON对象'},
             {value: '**示例代码**'},
-            {value: '```go\n//解析JSON\nobj := JsonParse(data) \n//设置值\nobj.SetData("data.[0].path", "1111")\nobj.SetData("data.[0].ts", 123456)\n//获取值,无论值是什么类型都是返回字符串\nobj.GetData("data.[0].path")\n//获取成员数量\nobj.GetCount("data")\n//取全部数据-返回字符串\nobj.ToString()\n//取Map,对应Go类型 map[string]any\nobj.GetMap()\n```'},
+            {value: '```go\n//解析JSON\nobj := JsonParse(data) \n//设置值\nobj.SetData("data.[0].path", "1111")\nobj.SetData("data.[0].ts", 123456)\n//获取值,无论值是什么类型都是返回字符串\nobj.GetData("data.[0].path")\n//获取成员数量\nobj.GetCount("data")\n```'},
         ]
     },
     {
-        name: ['当前函数执行完毕时执行', '函数执行完毕时执行', '退出时执行', 'defer'],
-        zName: [],
+        name: ['当前函数执行完毕时执行','函数执行完毕时执行', '退出时执行', 'defer'],
+        zName: [["dqhszxwbszx","当前函数执行完毕时执行"],["hszxwbszx","函数执行完毕时执行"],["tcszx","退出时执行"]],
         insertText: '    defer func() {\n		 $0\n	 }()',
         detail: "当前函数执行完毕时执行",
         contents: [
             {value: '**当前函数执行完毕时执行**'},
             {value: '**示例代码**'},
-            {
-                value: '```go\n//当前函数执行完毕时执行\n//输出 结果 D C B A\n' +
+            {value: '```go\n//当前函数执行完毕时执行\n//输出 结果 D C B A\n' +
                     'func main() {\n' +
                     '    defer func1()\n' +
                     '    defer func2()\n' +
@@ -1278,8 +1300,7 @@ window.builtCmdWords = [
                     ' \n' +
                     'func func3() {\n' +
                     '    Log("C")\n' +
-                    '}\n```'
-            },
+                    '}\n```'},
         ]
     },
 ]

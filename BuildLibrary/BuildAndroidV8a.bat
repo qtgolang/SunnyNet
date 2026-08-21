@@ -2,7 +2,7 @@
 
 
 @echo off
-set NDK=E:\init\windows-ndk-x86_64
+set NDK=F:\init\windows-ndk-x86_64
 set CGO_ENABLED=1
 
 

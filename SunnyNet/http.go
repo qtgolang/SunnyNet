@@ -128,9 +128,12 @@ func normalizeHostPort(h string) string {
 		}
 		return host
 	}
+	ar := strings.Split(h, ":")
+	if len(ar) > 1 && ar[len(ar)-1] == "" {
+		return ar[0]
+	}
 	return h
 }
-
 func (s *proxyRequest) httpCall(rw http.ResponseWriter, req *http.Request) {
 	if req == nil {
 		return

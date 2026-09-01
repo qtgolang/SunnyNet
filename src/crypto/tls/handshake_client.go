@@ -74,7 +74,10 @@ func (c *Conn) makeClientHello() (*ClientHelloMsg, clientKeySharePrivate, error)
 	if clientHelloVersion > VersionTLS12 {
 		clientHelloVersion = VersionTLS12
 	}
-
+	vg := config.NextProtos
+	if len(vg) == 1 && strings.ToLower(vg[0]) == "http/1.1" {
+		vg = nil
+	}
 	hello := &ClientHelloMsg{
 		vers:                         clientHelloVersion,
 		compressionMethods:           []uint8{CompressionNone},
@@ -86,7 +89,7 @@ func (c *Conn) makeClientHello() (*ClientHelloMsg, clientKeySharePrivate, error)
 		supportedCurves:              config.curvePreferences(),
 		supportedPoints:              []uint8{PointFormatUncompressed},
 		secureRenegotiationSupported: true,
-		alpnProtocols:                config.NextProtos,
+		alpnProtocols:                vg,
 		supportedVersions:            supportedVersions,
 	}
 

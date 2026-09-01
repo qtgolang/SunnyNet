@@ -37,7 +37,7 @@ type httpConn struct {
 	_localAddress         string
 	_note                 string
 	_OutRouterIPFunc      func(string) bool
-	updateRawTarget       func(int uint32)
+	updateRawTarget       func(uint32)
 	packageName           string //安卓模式下 pid 始终为0,但可以获取对应包名
 }
 

@@ -214,8 +214,11 @@ type proxyRequest struct {
 	_isRandomCipherSuites bool
 	_SocksUser            string
 	outRouterIP           *net.TCPAddr
-	rawTarget             uint32
-	_note                 string //注释上下文
+	rawTarget             struct {
+		hashCode uint32
+		at       byte
+	}
+	_note string //注释上下文
 }
 
 var sUser = make(map[int]string)
@@ -1035,36 +1038,72 @@ func (s *proxyRequest) Error(error error, _Display bool) {
 	_, _ = s.Response.rw.Write(er)
 }
 
-func (s *proxyRequest) doRequest() error {
+// doRequest 发送当前代理请求，并根据响应结果维护目标站点的协议类型缓存。
+func (s *proxyRequest) doRequest(bakBytes []byte) error {
+	// Request 和 URL 是后续发起网络请求、生成缓存键及判断协议类型的必要数据。
 	if s.Request == nil {
 		return errors.New("request is nil")
 	}
 	if s.Request.URL == nil {
 		return errors.New("request.url is nil")
 	}
+	if s.rawTarget.at == whoisHTTPS1 && s.rawTarget.hashCode != 0 {
+		s.TlsConfig.NextProtos = public.HTTP1NextProtos
+	}
+	// fk 标记本次调用是否已经执行过一次 Cloudflare 403 的 HTTP/1.1 降级重试。
+	fk := false
+	// 降级重试复用同一个请求对象，但会在重试前修改 TLS ALPN 配置。
+gfk:
+	// 禁止自动重定向，以便上层代理流程能够观察并处理服务端原始响应。
 	r := httpClient.Do(s.Request, s.Proxy, false, s.TlsConfig, s.SendTimeout, s.getTLSValues, s.Conn)
+	// 只有请求成功且响应存在时，才允许根据状态码和实际协议更新目标缓存。
 	if r.Err == nil && r.Response != nil {
-		if s.rawTarget != 0 {
+		// 对首次出现的 Cloudflare 403 尝试降级，避免同一次请求无限重复发送。
+		if r.Response.Header != nil && !fk && s.rawTarget.hashCode != 0 && r.Response.StatusCode == 403 && s.rawTarget.at != whoisHTTPS1 {
+			// 仅对 Cloudflare 返回的 403 应用协议降级，其他服务端的 403 保持原样。
+			if strings.EqualFold(r.Response.Header.Get("server"), "cloudflare") {
+				// 将尚未确定协议类型的目标缓存标记为 HTTP/1.1，供后续 TLS 握手选择 ALPN。
+				s.Global.cache.updateType(s.rawTarget.hashCode, whoisHTTPS1)
+				s.rawTarget.at = whoisHTTPS1
+				// 当前请求持有 TLS 配置时，立即改为仅协商 HTTP/1.1 并重发一次。
+				if s.TlsConfig != nil {
+					s.TlsConfig.NextProtos = public.HTTP1NextProtos
+					s.Request.SetData(bakBytes)
+					fk = true
+					goto gfk
+				}
+			}
+		}
+		// 仅在目标协议尚未识别时写入探测结果，避免覆盖已有的协议判断。
+		if s.rawTarget.at == 0 && s.rawTarget.hashCode != 0 {
+			// 明文 HTTP 目标无需 TLS 协商，单独记录为非 HTTPS 类型。
 			if s.Request.URL.Scheme != "https" {
-				s.Global.cache.updateType(s.rawTarget, whoisNoHTTPS)
+				s.Global.cache.updateType(s.rawTarget.hashCode, whoisNoHTTPS)
 			} else {
+				// HTTPS 目标按本次响应实际使用的协议版本记录 HTTP/2 或 HTTP/1.1。
 				if r.Response.ProtoMajor == 2 {
-					s.Global.cache.updateType(s.rawTarget, whoisHTTPS2)
+					s.Global.cache.updateType(s.rawTarget.hashCode, whoisHTTPS2)
 				} else {
-					s.Global.cache.updateType(s.rawTarget, whoisHTTPS1)
+					s.Global.cache.updateType(s.rawTarget.hashCode, whoisHTTPS1)
 				}
 			}
 		}
 	}
+	// 保存底层连接，供连接生命周期管理、错误处理和后续回调使用。
 	s.Response.Conn = r.Conn
+	// httpClient 通过请求上下文回传实际连接的服务端地址。
 	ip, _ := s.Request.Context().Value(public.SunnyNetServerIpTags).(string)
 	if ip != "" {
 		s.Response.ServerIP = ip
 	} else {
+		// 未取得拨号地址时使用固定占位值，避免向上层暴露空字符串。
 		s.Response.ServerIP = "unknown"
 	}
+	// Response 可能在网络错误时为空，调用方需要结合返回错误判断。
 	s.Response.Response = r.Response
+	// Close 用于在上层处理完成后释放或归还 httpClient 管理的连接资源。
 	s.Response.Close = r.Close
+	// 原样返回底层请求错误，HTTP 4xx/5xx 响应本身不作为 Go error 返回。
 	return r.Err
 }
 func (s *proxyRequest) sendHttps(req *http.Request) {
@@ -1162,9 +1201,8 @@ func (s *proxyRequest) https() {
 				s.MustTcpProcessing(public.TagMustTCP)
 				return
 			}
-			if res.At == whoisUndefined {
-				s.rawTarget = res.HashCode
-			}
+			s.rawTarget.hashCode = res.HashCode
+			s.rawTarget.at = res.At
 			tlsConfig.NextProtos = res.NextProto
 			ServerName := s.Target.String()
 			for _, v := range res.DNSNames {
@@ -1438,6 +1476,9 @@ func (s *proxyRequest) CompleteRequest(req *http.Request) {
 				s.TlsConfig.CipherSuites = tv
 			}
 			s.TlsConfig.NextProtos = public.HTTP2NextProtos
+			if s.rawTarget.at == whoisHTTPS1 {
+				s.TlsConfig.NextProtos = public.HTTP1NextProtos
+			}
 		}
 	}
 	{
@@ -1482,7 +1523,7 @@ func (s *proxyRequest) CompleteRequest(req *http.Request) {
 	}
 	//为了保证在请求完成时,还能获取到到请求的提交信息,先备份数据
 	bakBytes := s.Request.GetData()
-	err := s.doRequest()
+	err := s.doRequest(bakBytes)
 	if s.Response.Response != nil && s.Response.Header != nil && !strings.EqualFold(s.Request.Proto, http.H2Proto) {
 		aa := s.Response.Header.Clone()
 		for k, v := range aa {

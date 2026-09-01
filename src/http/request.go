@@ -13,11 +13,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/qtgolang/SunnyNet/src/crypto/tls"
-	"github.com/qtgolang/SunnyNet/src/http/httptrace"
-	"github.com/qtgolang/SunnyNet/src/http/internal/ascii"
-	"github.com/qtgolang/SunnyNet/src/internal/multipart"
-	"github.com/qtgolang/SunnyNet/src/internal/textproto"
 	"io"
 	"mime"
 	"net"
@@ -26,6 +21,12 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/qtgolang/SunnyNet/src/crypto/tls"
+	"github.com/qtgolang/SunnyNet/src/http/httptrace"
+	"github.com/qtgolang/SunnyNet/src/http/internal/ascii"
+	"github.com/qtgolang/SunnyNet/src/internal/multipart"
+	"github.com/qtgolang/SunnyNet/src/internal/textproto"
 
 	"golang.org/x/net/idna"
 )
@@ -359,7 +360,7 @@ func (r *Request) SetData(data []byte) {
 		_ = r.Body.Close()
 	}
 	r.ContentLength = int64(len(data))
-	if data == nil {
+	if len(data) == 0 {
 		r.Body = nil
 	} else {
 		r.Body = io.NopCloser(bytes.NewBuffer(data))

@@ -138,7 +138,9 @@ func (c *Cache) Get(targetAddr *TargetInfo, serverName string, isLoopFunc func()
 
 	// 命中缓存（带过期判断）
 	if e, ok := c.getValidEntry(hashCode); ok {
-		return c.entryToResult(e, serverName, targetAddr.Host), nil
+		h := c.entryToResult(e, serverName, targetAddr.Host)
+		h.HashCode = hashCode
+		return h, nil
 	}
 
 	// 同一个hashCode只允许一个update
@@ -146,11 +148,13 @@ func (c *Cache) Get(targetAddr *TargetInfo, serverName string, isLoopFunc func()
 	v, err, _ := c.sf.Do(key, func() (any, error) {
 		if e2, ok2 := c.getValidEntry(hashCode); ok2 {
 			r := c.entryToResult(e2, serverName, targetAddr.Host)
+			r.HashCode = hashCode
 			return r, nil
 		}
 		c.getSlots <- struct{}{}
 		r, err := c.update(hashCode, targetAddr, serverName, isLoopFunc())
 		<-c.getSlots
+		r.HashCode = hashCode
 		return r, err
 	})
 	r := v.(Result)
@@ -269,9 +273,8 @@ func (c *Cache) updateType(hashCode uint32, Type byte) {
 	c.mu.Lock()
 	a := c.data[hashCode]
 	if a != nil {
-		if a.typeAt == whoisUndefined {
-			a.typeAt = Type
-		}
+		a.typeAt = Type
+		c.data[hashCode] = a
 	}
 	c.mu.Unlock()
 	return
@@ -650,7 +653,7 @@ var _GetIpCertError = fmt.Errorf("no success Get Certificate")
 
 var _ParseIPError = errors.New("Not an IP address ")
 
-const whoisUndefined = 0
-const whoisNoHTTPS = 1
-const whoisHTTPS1 = 2
-const whoisHTTPS2 = 3
+const whoisUndefined = byte(0)
+const whoisNoHTTPS = byte(1)
+const whoisHTTPS1 = byte(2)
+const whoisHTTPS2 = byte(3)

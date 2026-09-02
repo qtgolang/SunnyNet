@@ -73,6 +73,11 @@
 - `ProcessDelPid(SunnyContext, pid int)` - 进程代理删除PID
 - `ProcessCancelAll(SunnyContext int)` - 进程代理取消全部已设置的进程名
 - `ProcessALLName(SunnyContext int, open, StopNetwork bool)` - 进程代理设置是否全部进程通过
+- `ProcessAddBlackName(SunnyContext int, Name *C.char)` - 进程代理添加黑名单进程名
+- `ProcessDelBlackName(SunnyContext int, Name *C.char)` - 进程代理删除黑名单进程名
+- `ProcessAddBlackPid(SunnyContext, pid int)` - 进程代理添加黑名单PID
+- `ProcessDelBlackPid(SunnyContext, pid int)` - 进程代理删除黑名单PID
+- `ProcessCancelBlackAll(SunnyContext int)` - 进程代理取消全部已设置的黑名单进程名
 
 ### 网络设置
 - `SetOutRouterIP(SunnyContext int, value *C.char) bool` - 设置数据出口IP
